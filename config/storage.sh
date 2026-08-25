@@ -42,7 +42,8 @@ export NPM_CONFIG_CACHE="${SRA_DATA_MOUNT}/caches/npm"
 export UV_CACHE_DIR="${SRA_DATA_MOUNT}/caches/uv"
 export PIP_CACHE_DIR="${SRA_DATA_MOUNT}/caches/pip"
 export MISE_CACHE_DIR="${SRA_DATA_MOUNT}/caches/mise"
-export PATH="${SRA_DATA_MOUNT}/npm-global/bin:\$HOME/.local/bin:\$PATH"
+# mise shims resolve node/python/uv/pi in ANY shell (no `mise activate` needed).
+export PATH="\$HOME/.local/share/mise/shims:${SRA_DATA_MOUNT}/npm-global/bin:\$HOME/.local/bin:\$PATH"
 ENV
 chown "${SRA_TARGET_USER}:${SRA_TARGET_USER}" "$ENV_SNIPPET"
 chmod 0644 "$ENV_SNIPPET"
@@ -50,9 +51,10 @@ ok "wrote ${ENV_SNIPPET}"
 
 # Source it from .bashrc once (idempotent). Sourcing from the volume means later edits
 # to the snippet take effect without re-touching .bashrc.
-BASHRC="${SRA_TARGET_HOME}/.bashrc"
-if ! grep -qsF "$ENV_SNIPPET" "$BASHRC" 2>/dev/null; then
-  printf '\n# sra data-volume environment\n[ -f "%s" ] && source "%s"\n' "$ENV_SNIPPET" "$ENV_SNIPPET" >>"$BASHRC"
-  chown "${SRA_TARGET_USER}:${SRA_TARGET_USER}" "$BASHRC"
-  ok "sourced ${ENV_SNIPPET} from ${BASHRC}"
-fi
+for rc in "${SRA_TARGET_HOME}/.bashrc" "${SRA_TARGET_HOME}/.profile"; do
+  if ! grep -qsF "$ENV_SNIPPET" "$rc" 2>/dev/null; then
+    printf '\n# sra data-volume environment\n[ -f "%s" ] && . "%s"\n' "$ENV_SNIPPET" "$ENV_SNIPPET" >>"$rc"
+    chown "${SRA_TARGET_USER}:${SRA_TARGET_USER}" "$rc"
+    ok "sourced ${ENV_SNIPPET} from ${rc}"
+  fi
+done

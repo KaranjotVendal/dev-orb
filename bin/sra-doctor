@@ -4,6 +4,12 @@
 # user's PATH) or via sudo -u sra. Safe to run anytime; changes nothing.
 set -uo pipefail
 
+# Be self-sufficient regardless of how we are invoked: pull in the data-volume env
+# (mise shims + npm-global/bin on PATH) so tool checks see the same PATH an interactive
+# shell would.
+_sra_env="${SRA_DATA_MOUNT:-/mnt/sra-data}/state/sra-env.sh"
+[ -f "$_sra_env" ] && . "$_sra_env"
+
 DATA_MOUNT="${SRA_DATA_MOUNT:-/mnt/sra-data}"
 fail=0
 
