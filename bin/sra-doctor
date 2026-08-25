@@ -35,7 +35,7 @@ echo "agent stack:"
 check_cmd "claude" "claude --version"
 check_cmd "herdr"  "herdr --version"
 check_cmd "pi"     "pi --version"
-check_cmd "circli" "circli --version"
+check_cmd "circli" "command -v circli"
 check_cmd "gh"     "gh --version"
 
 echo "cli utils:"
