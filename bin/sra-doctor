@@ -42,7 +42,6 @@ echo "state:"
 if mountpoint -q "$DATA_MOUNT"; then row "data volume" "PASS" "$DATA_MOUNT mounted"; else row "data volume" "FAIL" "$DATA_MOUNT not mounted"; fail=1; fi
 if [ -f "${DATA_MOUNT}/secrets/feedback-loop.env" ]; then row "loop env" "PASS" "present (0600)"; else row "loop env" "FAIL" "missing"; fail=1; fi
 if [ -d "${DATA_MOUNT}/work/sold-rate-agent/.git" ]; then row "repo" "PASS" "cloned"; else row "repo" "FAIL" "missing"; fail=1; fi
-if systemctl is-enabled sra-feedback-loop.timer >/dev/null 2>&1; then row "loop timer" "PASS" "$(systemctl is-active sra-feedback-loop.timer)"; else row "loop timer" "WARN" "not enabled"; fi
 if claude whoami >/dev/null 2>&1 || claude auth status >/dev/null 2>&1; then row "claude login" "PASS" "logged in"; else row "claude login" "WARN" "not logged in (run --only login)"; fi
 
 echo

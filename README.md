@@ -1,6 +1,7 @@
 # sra-vm-infra
 
-Infra + configuration for `sra-vm-box`, the sold-rate-agent feedback-loop host.
+Infra + configuration for `sra-vm-box`, a reusable remote agent workstation (herdr +
+Claude Code workers + the sold-rate-agent repo), reached over SSM.
 
 Two cleanly separated layers:
 
@@ -43,16 +44,16 @@ setup.sh              entry point; sources lib, runs phases in order
 lib/                  logging.sh (sectioned log -> /var/log/sra-setup.log), helpers.sh
 preflight/guard.sh    fail-closed checks: Ubuntu 24.04, x86_64, user, /mnt/sra-data mounted, SSM reachable
 packaging/            apt-base.packages (manifest) + apt.sh, mise.sh, agent-stack.sh
-config/               storage.sh, secrets.sh, repo.sh, services.sh
+config/               storage.sh, secrets.sh, repo.sh
 login/auth.sh         the one interactive step (claude login)
 migrations/           timestamped one-offs, run once, sentinel-tracked
 mise.toml             pinned: node 22, python 3.14, uv latest, pi (npm backend)
-systemd/              feedback-loop service + timer templates
 bin/                  sra-doctor (verify), sra-update (re-converge)
 ```
 
-Phase order: `guard -> apt -> storage -> mise -> agents -> secrets -> repo -> services`
-then migrations, then the interactive `login` phase.
+Phase order: `guard -> apt -> storage -> mise -> agents -> secrets -> repo` then
+migrations, then the interactive `login` phase. There is no scheduled service on the box
+(the feedback loop is run on demand, not by a timer).
 
 What it installs: mise-managed node/python/uv; the agent stack (Claude Code, herdr, circli, gh;
 pi comes from mise); base CLI utils (rg, fd, jq, unzip, build-essential, aws CLI v2). All heavy
@@ -70,7 +71,7 @@ sudo ./setup.sh --list
 ```
 
 Re-run anytime to converge. `bin/sra-update` pulls this repo and re-runs `setup.sh -y`;
-`bin/sra-doctor` prints a PASS/FAIL table of every tool + the mounts/services/login state.
+`bin/sra-doctor` prints a PASS/FAIL table of every tool + the mount/repo/login state.
 
 ## Configuration (per box)
 
@@ -98,7 +99,8 @@ MVF-specific values are not baked in — set them as environment variables when 
 5. `sudo ./setup.sh -y` — the unattended phases.
 6. `sudo ./setup.sh --only login` — the interactive `claude login` device-code step.
 7. `sra-doctor` — confirm everything is green.
-8. The `sra-feedback-loop.timer` is enabled and fires the loop daily at 06:00 local.
+8. Run the feedback loop on demand from the repo (via `mise exec -- uv run ...`) or through
+   a herdr session — the box runs no scheduled job.
 
 ## Required SSM parameters
 
@@ -138,10 +140,6 @@ profile mlops). `herdr --remote sra-fbl` attaches once herdr is on the box.
   Bitbucket-SSH repos the VM has no key for. `setup.sh` resolves source by (1) already-
   present trees rsynced to `/mnt/sra-data/work/{circli,bbcli}`, else (2) HTTPS clone using
   the `bitbucket/http-credential` SSM param. Pick one.
-- **Hermes unit target**: the repo has an existing codex-era `sra-daily.service`
-  (`vm_daily_run.sh`, `SR_BACKEND=codex`). This project's `sra-feedback-loop.service`
-  targets the claude-runtime `scripts.sra_feedback_loop_daily` (the Mac launchd loop the
-  brief points at). Confirm which loop the VM should run.
 - **circli auth**: circli's token is surfaced as `CIRCLECI_TOKEN`; on a headless box its
   keyring backend may still need `keyrings.alt`.
 - **pi auth**: pi is installed via mise; authentication is handled out-of-band via codex

@@ -43,7 +43,7 @@ source "${SRA_SETUP_ROOT}/lib/helpers.sh"
 trap 'die "failed at line ${LINENO} (last command exited ${?})"' ERR
 
 # --- Phase table --------------------------------------------------------------------
-PHASES=(guard apt storage mise agents secrets repo services)
+PHASES=(guard apt storage mise agents secrets repo)
 
 phase_file() {
   case "$1" in
@@ -54,7 +54,6 @@ phase_file() {
     storage)  echo "config/storage.sh" ;;
     secrets)  echo "config/secrets.sh" ;;
     repo)     echo "config/repo.sh" ;;
-    services) echo "config/services.sh" ;;
     login)    echo "login/auth.sh" ;;
     *)        return 1 ;;
   esac

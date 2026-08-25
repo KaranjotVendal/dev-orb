@@ -45,9 +45,9 @@ else
 fi
 unset SF_KEY
 
-# --- The feedback-loop env file the systemd service sources (0600, owned by sra). ----
-# Mirrors the Mac launchd env for scripts/sra_feedback_loop_daily, adapted for the VM:
-# Hermes home + worker runtime + the DEBUG Slack channel, plus the tokens the loop reads.
+# --- The feedback-loop env file (0600, owned by sra). Sourced when the loop is run on
+#     demand (there is no scheduled unit). Mirrors the Mac launchd env for
+#     scripts/sra_feedback_loop_daily: Hermes home + worker runtime + Slack + Snowflake.
 ENV_FILE="${SECRETS_DIR}/feedback-loop.env"
 umask 077
 {
