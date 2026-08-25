@@ -27,14 +27,9 @@ else
   ok "herdr installed"
 fi
 
-# --- pi (worker runtime). REQUIRED. Published to npm as @earendil-works/pi-coding-agent.
-if user_have pi; then
-  ok "pi already installed"
-else
-  step "installing @earendil-works/pi-coding-agent"
-  run_as_user "${MISE} exec -- npm install -g @earendil-works/pi-coding-agent"
-  ok "pi installed"
-fi
+# --- pi (worker runtime). REQUIRED. Installed via mise (see mise.toml, npm backend);
+#     auth is handled out-of-band via codex device auth, not baked here.
+if user_have pi; then ok "pi present (via mise)"; else warn "pi missing — run: mise install"; fi
 
 # --- gh (GitHub CLI). RECOMMENDED. Official apt repo (keyring + sources, idempotent). --
 if have gh; then

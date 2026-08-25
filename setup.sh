@@ -31,6 +31,7 @@ export SRA_GIT_EMAIL="${SRA_GIT_EMAIL:-}"   # git identity for clone/commit — 
 export SRA_GIT_NAME="${SRA_GIT_NAME:-}"
 export SRA_FEEDBACK_LOOP_SLACK_CHANNEL="${SRA_FEEDBACK_LOOP_SLACK_CHANNEL:-}"  # Slack channel id for the digest
 export SRA_BITBUCKET_ORG="${SRA_BITBUCKET_ORG:-}"  # org for the circli/bbcli HTTPS clone
+export SRA_GHSTACK_REPO="${SRA_GHSTACK_REPO:-github/gh-stack}"  # gh extension install target
 export SRA_LOG_FILE="${SRA_LOG_FILE:-/var/log/sra-setup.log}"
 
 # --- Load helpers -------------------------------------------------------------------

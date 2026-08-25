@@ -7,6 +7,8 @@
 node = "22"
 python = "3.14"
 uv = "latest"
+# pi worker runtime, installed via mise's npm backend (auth is out-of-band, device auth).
+"npm:@earendil-works/pi-coding-agent" = "latest"
 
 [settings]
 # Precompiled python (python-build-standalone) — no source build on the box.

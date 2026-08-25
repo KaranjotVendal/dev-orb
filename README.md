@@ -46,7 +46,7 @@ packaging/            apt-base.packages (manifest) + apt.sh, mise.sh, agent-stac
 config/               storage.sh, secrets.sh, repo.sh, services.sh
 login/auth.sh         the one interactive step (claude login)
 migrations/           timestamped one-offs, run once, sentinel-tracked
-mise.toml             pinned runtimes: node 22, python 3.14, uv latest
+mise.toml             pinned: node 22, python 3.14, uv latest, pi (npm backend)
 systemd/              feedback-loop service + timer templates
 bin/                  sra-doctor (verify), sra-update (re-converge)
 ```
@@ -54,8 +54,8 @@ bin/                  sra-doctor (verify), sra-update (re-converge)
 Phase order: `guard -> apt -> storage -> mise -> agents -> secrets -> repo -> services`
 then migrations, then the interactive `login` phase.
 
-What it installs: mise-managed node/python/uv; the agent stack (Claude Code, herdr, pi,
-circli, gh); base CLI utils (rg, fd, jq, unzip, build-essential, aws CLI v2). All heavy
+What it installs: mise-managed node/python/uv; the agent stack (Claude Code, herdr, circli, gh;
+pi comes from mise); base CLI utils (rg, fd, jq, unzip, build-essential, aws CLI v2). All heavy
 trees (npm-global, caches, worktrees, the repo, the venv) are placed on `/mnt/sra-data`
 via an env snippet, since root is only ~7 G. Docker and codex are intentionally NOT
 installed.
@@ -142,7 +142,8 @@ profile mlops). `herdr --remote sra-fbl` attaches once herdr is on the box.
   (`vm_daily_run.sh`, `SR_BACKEND=codex`). This project's `sra-feedback-loop.service`
   targets the claude-runtime `scripts.sra_feedback_loop_daily` (the Mac launchd loop the
   brief points at). Confirm which loop the VM should run.
-- **circli / pi runtime auth**: circli's token is surfaced as `CIRCLECI_TOKEN`; on a
-  headless box its keyring backend may still need `keyrings.alt`. pi's provider auth
-  (Anthropic vs OpenRouter) needs confirming.
-- **gh-stack**: set `SRA_GHSTACK_REPO` to enable; unset skips it.
+- **circli auth**: circli's token is surfaced as `CIRCLECI_TOKEN`; on a headless box its
+  keyring backend may still need `keyrings.alt`.
+- **pi auth**: pi is installed via mise; authentication is handled out-of-band via codex
+  device auth, not baked into setup.
+- **gh-stack**: installs `github/gh-stack` by default (override `SRA_GHSTACK_REPO`).
