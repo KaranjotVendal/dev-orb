@@ -12,3 +12,5 @@
 /docs/*
 # internal working brief — not committed
 BRIEF.md
+# working checklist — local only
+SETUP-CHECKLIST.md
