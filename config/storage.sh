@@ -22,6 +22,11 @@ DIRS=(
   "${SRA_DATA_MOUNT}/caches/xdg"
 )
 for d in "${DIRS[@]}"; do install -d -o "${SRA_TARGET_USER}" -g "${SRA_TARGET_USER}" "$d"; done
+# Reconcile ownership on re-run: the durable volume can carry stale content owned by a
+# different user (e.g. an earlier bootstrap run as `ubuntu`). Force the tool-writable
+# trees to the target user so npm / uv / mise can write regardless of that history —
+# without this a pre-existing root/ubuntu-owned node_modules subdir fails with EACCES.
+chown -R "${SRA_TARGET_USER}:${SRA_TARGET_USER}" "${SRA_DATA_MOUNT}/npm-global" "${SRA_DATA_MOUNT}/caches" 2>/dev/null || true
 # secrets/ is 0700 (holds the Snowflake key + env files written by the secrets phase).
 install -d -m 700 -o "${SRA_TARGET_USER}" -g "${SRA_TARGET_USER}" "${SRA_DATA_MOUNT}/secrets"
 ok "created directory layout under ${SRA_DATA_MOUNT}"
