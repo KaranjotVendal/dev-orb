@@ -1,0 +1,14 @@
+# Terraform state carries secrets — never commit
+.terraform/
+*.tfstate
+*.tfstate.*
+# tfvars may carry sensitive values
+*.tfvars
+# credentials / secrets
+.git-credentials
+*.pem
+*.key
+# superpowers / working artifacts
+/docs/*
+# internal working brief — not committed
+BRIEF.md
