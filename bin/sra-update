@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# sra-update — re-converge the box from this repo (the omarchy-update shape). Pulls the
+# latest sra-vm-infra, re-runs the idempotent config phases, applies any new migrations,
+# then verifies. Does NOT touch the interactive login phase. Run as root (sudo).
+set -eEo pipefail
+
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_DIR"
+
+if [ -d .git ]; then
+  echo "sra-update: pulling latest sra-vm-infra"
+  git pull --ff-only || echo "sra-update: git pull skipped/failed — continuing with local tree"
+fi
+
+echo "sra-update: re-running setup (unattended, skips login)"
+exec ./setup.sh -y

@@ -1,0 +1,13 @@
+# Fires the feedback loop daily at 06:00 local time (the VM clock is set to the configured
+# timezone at boot). Persistent=false: the run is same-day and creds are short-lived, so a
+# missed fire must NOT be caught up later — a skipped day is correct, a stale catch-up is not.
+[Unit]
+Description=Sold-Rate-Agent feedback loop timer (06:00 daily)
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=false
+Unit=sra-feedback-loop.service
+
+[Install]
+WantedBy=timers.target

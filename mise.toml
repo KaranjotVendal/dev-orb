@@ -1,0 +1,13 @@
+# Pinned toolchain for the sra-vm feedback-loop box. mise is the version-manager
+# backbone; this file is copied to ~sra/.config/mise/config.toml by packaging/mise.sh
+# and `mise install` materialises exactly these versions. Runtimes only — the agent
+# CLIs (Claude Code, pi, circli, herdr, gh) are installed by packaging/agent-stack.sh
+# via npm-global / uv tool / curl, not through mise, so each stays independently pinned.
+[tools]
+node = "22"
+python = "3.14"
+uv = "latest"
+
+[settings]
+# Precompiled python (python-build-standalone) — no source build on the box.
+python.compile = false

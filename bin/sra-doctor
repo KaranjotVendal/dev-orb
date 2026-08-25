@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# sra-doctor — verify the box converged. Prints one row per checked tool/state with
+# PASS/FAIL and exits nonzero if anything failed. Run as the target user (it checks that
+# user's PATH) or via sudo -u sra. Safe to run anytime; changes nothing.
+set -uo pipefail
+
+DATA_MOUNT="${SRA_DATA_MOUNT:-/mnt/sra-data}"
+fail=0
+
+row() { printf '  %-22s %-8s %s\n' "$1" "$2" "${3:-}"; }
+check_cmd() {
+  local label="$1" cmd="$2" ver
+  if ver="$(eval "$cmd" 2>/dev/null | head -1)"; then
+    row "$label" "PASS" "$ver"
+  else
+    row "$label" "FAIL" "(not found)"; fail=1
+  fi
+}
+
+echo "sra-doctor — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo
+echo "runtimes:"
+check_cmd "node"   "node --version"
+check_cmd "python" "python --version"
+check_cmd "uv"     "uv --version"
+check_cmd "mise"   "mise --version"
+
+echo "agent stack:"
+check_cmd "claude" "claude --version"
+check_cmd "herdr"  "herdr --version"
+check_cmd "pi"     "pi --version"
+check_cmd "circli" "circli --version"
+check_cmd "gh"     "gh --version"
+
+echo "cli utils:"
+check_cmd "rg"     "rg --version"
+check_cmd "fd"     "fd --version"
+check_cmd "jq"     "jq --version"
+check_cmd "aws"    "aws --version"
+
+echo "state:"
+if mountpoint -q "$DATA_MOUNT"; then row "data volume" "PASS" "$DATA_MOUNT mounted"; else row "data volume" "FAIL" "$DATA_MOUNT not mounted"; fail=1; fi
+if [ -f "${DATA_MOUNT}/secrets/feedback-loop.env" ]; then row "loop env" "PASS" "present (0600)"; else row "loop env" "FAIL" "missing"; fail=1; fi
+if [ -d "${DATA_MOUNT}/work/sold-rate-agent/.git" ]; then row "repo" "PASS" "cloned"; else row "repo" "FAIL" "missing"; fail=1; fi
+if systemctl is-enabled sra-feedback-loop.timer >/dev/null 2>&1; then row "loop timer" "PASS" "$(systemctl is-active sra-feedback-loop.timer)"; else row "loop timer" "WARN" "not enabled"; fi
+if claude whoami >/dev/null 2>&1 || claude auth status >/dev/null 2>&1; then row "claude login" "PASS" "logged in"; else row "claude login" "WARN" "not logged in (run --only login)"; fi
+
+echo
+if [ "$fail" -eq 0 ]; then echo "sra-doctor: OK"; else echo "sra-doctor: FAILURES present"; fi
+exit "$fail"

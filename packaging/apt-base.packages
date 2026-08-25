@@ -1,0 +1,13 @@
+# Base apt packages the agents rely on. One package per line; blank lines and
+# # comments ignored. Read by packaging/apt.sh and installed idempotently.
+build-essential
+ca-certificates
+curl
+git
+jq
+unzip
+xz-utils
+rsync
+openssh-server
+ripgrep
+fd-find
