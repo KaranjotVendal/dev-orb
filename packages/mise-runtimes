@@ -1,5 +1,4 @@
-# Pinned language runtimes + pi (mise npm backend). One `mise use -g` spec per line.
+# Pinned language runtimes. One `mise use -g` spec per line. (Agent CLIs -> packages/mise-agents.)
 node@22
 python@3.14
 uv@latest
-npm:@earendil-works/pi-coding-agent@latest

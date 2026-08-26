@@ -22,6 +22,7 @@ PHASES=(
   packaging/apt
   config/storage
   packaging/mise
+  packaging/agents
 )
 
 # --- args ---------------------------------------------------------------------------

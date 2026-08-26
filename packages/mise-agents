@@ -1,0 +1,5 @@
+# npm-based agent CLIs via mise's npm backend (mise's node powers them, omarchy-style, but
+# installed stably rather than npx-on-demand). Runtime auth is out-of-band (claude login, pi device auth).
+npm:@anthropic-ai/claude-code@latest
+npm:@earendil-works/pi-coding-agent@latest
+npm:@openai/codex@latest

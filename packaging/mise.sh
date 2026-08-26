@@ -14,7 +14,7 @@ else
   ok "mise already installed ($("$MISE" --version 2>/dev/null || echo present))"
 fi
 
-mapfile -t SPECS < <(grep -hvE '^\s*(#|$)' "${ORB_ROOT}/packages/mise-runtimes" "${ORB_ROOT}/packages/mise-tools")
+mapfile -t SPECS < <(grep -hvE '^\s*(#|$)' "${ORB_ROOT}/packages/mise-runtimes" "${ORB_ROOT}/packages/mise-tools" "${ORB_ROOT}/packages/mise-agents")
 [ ${#SPECS[@]} -gt 0 ] || die "no specs in packages/mise-runtimes + packages/mise-tools"
 
 step "installing ${#SPECS[@]} tools via mise use -g (installs -> ${MISE_DATA_DIR:-default})"
