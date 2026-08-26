@@ -21,6 +21,7 @@ PHASES=(
   preflight/guard
   packaging/apt
   config/storage
+  packaging/mise
 )
 
 # --- args ---------------------------------------------------------------------------

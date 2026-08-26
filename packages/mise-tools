@@ -1,0 +1,19 @@
+# CLI toolkit (you ∩ omarchy ∩ dmmulroy + your own), installed latest via mise. One per line.
+ripgrep
+fd
+fzf
+bat
+eza
+zoxide
+shellcheck
+lazygit
+starship
+ast-grep
+neovim
+tealdeer
+glow
+jj
+btop
+direnv
+just
+tree-sitter

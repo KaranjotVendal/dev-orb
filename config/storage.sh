@@ -15,7 +15,7 @@ DIRS=(
   "${ORB_BOX_DATA_MOUNT}/state" "${ORB_BOX_DATA_MOUNT}/npm-global"
   "${ORB_BOX_DATA_MOUNT}/caches/npm" "${ORB_BOX_DATA_MOUNT}/caches/uv"
   "${ORB_BOX_DATA_MOUNT}/caches/pip" "${ORB_BOX_DATA_MOUNT}/caches/mise"
-  "${ORB_BOX_DATA_MOUNT}/caches/xdg"
+  "${ORB_BOX_DATA_MOUNT}/caches/xdg" "${ORB_BOX_DATA_MOUNT}/mise"
 )
 for d in "${DIRS[@]}"; do mkdir -p "$d"; done
 install -d -m 700 "${ORB_BOX_DATA_MOUNT}/secrets"
@@ -31,7 +31,8 @@ export NPM_CONFIG_CACHE="${ORB_BOX_DATA_MOUNT}/caches/npm"
 export UV_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/uv"
 export PIP_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/pip"
 export MISE_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/mise"
-export PATH="\$HOME/.local/share/mise/shims:${ORB_BOX_DATA_MOUNT}/npm-global/bin:\$HOME/.local/bin:\$PATH"
+export MISE_DATA_DIR="${ORB_BOX_DATA_MOUNT}/mise"  # tool installs (node/python/toolkit) on the volume, not the 7G root
+export PATH="${ORB_BOX_DATA_MOUNT}/mise/shims:${ORB_BOX_DATA_MOUNT}/npm-global/bin:\$HOME/.local/bin:\$PATH"
 ENV
 ok "wrote ${ENV_SNIPPET}"
 
