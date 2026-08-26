@@ -32,6 +32,27 @@ ensure_line() {
   grep -qsF -- "$line" "$file" || printf '%s\n' "$line" >>"$file"
 }
 
+# ssm_fetch <param-name> <yes|no decrypt> — fetch an SSM parameter value with a bounded retry
+# (rides out IAM instance-profile propagation on a fresh boot). Prints the value on stdout;
+# nonzero if every attempt failed. Never logs the value.
+ssm_fetch() {
+  local param_name="$1" with_decryption="$2" attempt value
+  local decrypt=()
+  [ "$with_decryption" = "yes" ] && decrypt=(--with-decryption)
+  for attempt in $(seq 1 12); do
+    if value="$(aws ssm get-parameter --region "${ORB_BOX_REGION}" "${decrypt[@]}" \
+        --name "$param_name" --query Parameter.Value --output text 2>/dev/null)"; then
+      printf '%s' "$value"
+      return 0
+    fi
+    sleep 5
+  done
+  return 1
+}
+
+# ssm_value_ok <value> — true when a fetched param holds a real value (not empty / PLACEHOLDER).
+ssm_value_ok() { [ -n "$1" ] && [ "$1" != "PLACEHOLDER" ]; }
+
 # load_config <path> — parse the TOML config into ORB_* env vars via lib/config.py, and
 # export them so phases (run in subshells) inherit them.
 load_config() {
