@@ -19,6 +19,7 @@ export ORB_ROOT
 # Ordered phase list (relative to ORB_ROOT, without .sh). Grows one entry per increment.
 PHASES=(
   preflight/guard
+  packaging/apt
 )
 
 # --- args ---------------------------------------------------------------------------

@@ -1,0 +1,12 @@
+# System essentials (the CLI toolkit lives in packages/mise-tools). One per line; # comments ok.
+build-essential
+ca-certificates
+curl
+git
+jq
+unzip
+xz-utils
+rsync
+openssh-server
+gnupg
+wget

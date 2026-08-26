@@ -10,6 +10,21 @@ as_root() {
   if [ "$(id -u)" -eq 0 ]; then "$@"; else sudo "$@"; fi
 }
 
+# apt_get <args...> — apt-get (as root) with a dpkg-lock wait + retry. cloud-init /
+# unattended-upgrades routinely hold the lock in the first minutes of boot. Fails closed
+# after the retries so the phase aborts rather than proceeding on a half-install.
+apt_get() {
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    if as_root env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 "$@"; then
+      return 0
+    fi
+    warn "apt-get $* failed (attempt ${attempt}/5); retrying in 15s"
+    sleep 15
+  done
+  return 1
+}
+
 # ensure_line <file> <line> — append <line> to <file> once (idempotent config edits).
 ensure_line() {
   local file="$1" line="$2"
