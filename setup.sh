@@ -20,6 +20,7 @@ export ORB_ROOT
 PHASES=(
   preflight/guard
   packaging/apt
+  config/storage
 )
 
 # --- args ---------------------------------------------------------------------------
@@ -70,7 +71,13 @@ main() {
     [ -n "$match" ] || die "unknown phase: ${ONLY} (see --list)"
     run_phase "$match"
   else
-    for rel in "${PHASES[@]}"; do run_phase "$rel"; done
+    # Option A: after each phase, source the volume env snippet once storage has written it,
+    # so the non-interactive install phases inherit it across the per-phase subshell boundary.
+    local snippet="${ORB_BOX_DATA_MOUNT}/state/orb-env.sh"
+    for rel in "${PHASES[@]}"; do
+      run_phase "$rel"
+      [ -f "$snippet" ] && . "$snippet"
+    done
   fi
   section "setup complete"
 }
