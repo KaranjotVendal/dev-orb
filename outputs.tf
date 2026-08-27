@@ -34,31 +34,6 @@ output "instance_ami_id" {
 }
 
 output "data_volume_id" {
-  description = "Encrypted EBS data volume the VM attaches + mounts (serving cache + session logs + repo)."
+  description = "Encrypted EBS data volume the VM attaches + mounts at the data_mount path."
   value       = aws_ebs_volume.data.id
-}
-
-output "token_ssm_param_name" {
-  description = "SSM SecureString parameter the broker writes the fresh id-token to and the VM fetches at 06:00."
-  value       = local.token_param_name
-}
-
-output "seat_ssm_param_names" {
-  description = "SSM SecureString parameters holding the three codex seat auth bundles."
-  value       = local.seat_param_names
-}
-
-output "debug_webhook_ssm_param_name" {
-  description = "SSM SecureString parameter holding the DEBUG Slack webhook (INV-2: DEBUG only)."
-  value       = local.debug_webhook_param_name
-}
-
-output "sf_identity_ssm_param_name" {
-  description = "SSM String parameter holding the non-secret Snowflake connection identity (SF_* identifiers) appended to run.env."
-  value       = local.sf_identity_param_name
-}
-
-output "broker_role_arn" {
-  description = "Narrow role the laptop broker assumes to ssm:PutParameter ONLY the id-token param. Null until broker_principal_arn is set at GATE 2."
-  value       = var.broker_principal_arn == "" ? null : aws_iam_role.broker[0].arn
 }

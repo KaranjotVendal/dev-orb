@@ -34,55 +34,27 @@ variable "tags" {
 # --- SSM ---------------------------------------------------------------------
 
 variable "ssm_prefix" {
-  description = "SSM Parameter Store prefix for this box's secrets. The instance role's read grant and the laptop broker's write grant are both scoped under this subtree."
+  description = "SSM Parameter Store prefix for this box's secrets (e.g. the GitHub token orb reads at setup). The instance role's read grant is scoped under this subtree."
   type        = string
   default     = "/sold-rate-agent/vm"
-}
-
-# --- Cache transfer (S3) -----------------------------------------------------
-
-variable "cache_bucket" {
-  description = "S3 bucket the VM uploads the daily serving cache + sessions to (the durable cache-transfer store the laptop/SPCS side then fetches). PRE-EXISTS and is operator-managed (region eu-north-1) — this module references it only, it does NOT create it. The instance role gets an upload-only grant on just this bucket."
-  type        = string
-  default     = "sold-rate-agent"
 }
 
 # --- Network / instance ------------------------------------------------------
 
 variable "instance_type" {
-  description = "EC2 instance type. Sized UP from jot-server's t3.small to a memory-headroom class (t3.large = 8 GiB, t3.xlarge = 16 GiB) to avoid the OOM-at-51/60 that motivated moving the run off the laptop."
+  description = "EC2 instance type. A memory-headroom class (t3.large = 8 GiB, t3.xlarge = 16 GiB) so parallel agent sessions + tool builds have room."
   type        = string
   default     = "t3.xlarge"
 }
 
 variable "data_volume_size_gb" {
-  description = "Size of the encrypted gp3 EBS data volume (SRA_CACHE_DIR serving cache + session logs + the deployed repo)."
+  description = "Size of the encrypted gp3 EBS data volume mounted at data_mount (the durable work trees, tool installs, caches, and logs)."
   type        = number
   default     = 50
 }
 
-variable "dashboard_url" {
-  description = "Public dashboard ingress the Slack digest links to (the deployed SPCS app URL). Written into the VM run .env; not a secret."
-  type        = string
-  default     = "https://dashboard.example.com"
-}
-
 variable "timezone" {
-  description = "IANA timezone the VM's clock is set to at boot, so the 06:00 systemd timer fires in the same wall-clock as the laptop's 05:55 broker."
+  description = "IANA timezone the VM's clock is set to at boot."
   type        = string
   default     = "Europe/London"
-}
-
-# --- Laptop broker (token push) ----------------------------------------------
-
-variable "broker_principal_arn" {
-  description = "The laptop broker's AWS principal ARN (IAM user/role) allowed to assume the narrow broker role that can ssm:PutParameter ONLY the id-token parameter. Set at GATE 2; empty means the broker role trusts no one (assume fails closed)."
-  type        = string
-  default     = ""
-}
-
-variable "deploy_ssh_public_key" {
-  description = "SSH public key authorized for the daily-run user (fetched at boot into authorized_keys). Reached ONLY over the SSM port-forward tunnel — no security-group SSH ingress. Non-secret; a String SSM param."
-  type        = string
-  default     = ""
 }

@@ -48,9 +48,9 @@ resource "aws_volume_attachment" "data" {
   instance_id = aws_instance.box.id
 
   # On a user_data_replace_on_change re-provision, do NOT let Terraform race a
-  # DetachVolume against the still-running old instance where /mnt/sra-data is
+  # DetachVolume against the still-running old instance where /mnt/data is
   # mounted+busy (it would stall in `detaching` until timeout and error the apply —
-  # exactly the re-provision-to-inspect-evidence flow the durable volume exists for).
+  # exactly the re-provision flow the durable volume exists to survive).
   # skip_destroy leaves detach to the instance's graceful terminate (AWS auto-detaches),
   # avoiding both the stall and the fs-corruption risk of a force_detach.
   skip_destroy = true
