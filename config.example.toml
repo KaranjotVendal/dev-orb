@@ -36,12 +36,12 @@ name    = "your-agent-repo"
 source  = "clone"
 url     = "https://github.com/YOUR_USER/YOUR_REPO"
 branch  = "main"
-dest    = "work/your-agent-repo"
+dest    = "dev/your-agent-repo"
 uv_sync = true                   # run `uv sync` after placing.
 
 [[repos]]
 name            = "your-cli"
 source          = "rsync"        # rsynced from the Mac (private host, no box credential).
 rsync_path      = "~/dev/your-cli"
-dest            = "work/your-cli"
+dest            = "dev/your-cli"
 uv_tool_install = true           # install via `uv tool install --editable <dest>`.

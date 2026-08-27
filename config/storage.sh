@@ -11,7 +11,7 @@ mountpoint -q "$ORB_BOX_DATA_MOUNT" || die "${ORB_BOX_DATA_MOUNT} is not mounted
 as_root chown "$(id -un):$(id -gn)" "$ORB_BOX_DATA_MOUNT"
 
 DIRS=(
-  "${ORB_BOX_DATA_MOUNT}/work" "${ORB_BOX_DATA_MOUNT}/worktrees" "${ORB_BOX_DATA_MOUNT}/logs"
+  "${ORB_BOX_DATA_MOUNT}/dev" "${ORB_BOX_DATA_MOUNT}/worktrees" "${ORB_BOX_DATA_MOUNT}/logs"
   "${ORB_BOX_DATA_MOUNT}/state" "${ORB_BOX_DATA_MOUNT}/npm-global"
   "${ORB_BOX_DATA_MOUNT}/caches/npm" "${ORB_BOX_DATA_MOUNT}/caches/uv"
   "${ORB_BOX_DATA_MOUNT}/caches/pip" "${ORB_BOX_DATA_MOUNT}/caches/mise"
@@ -20,6 +20,21 @@ DIRS=(
 for d in "${DIRS[@]}"; do mkdir -p "$d"; done
 install -d -m 700 "${ORB_BOX_DATA_MOUNT}/secrets"
 ok "created directory layout under ${ORB_BOX_DATA_MOUNT}"
+
+# Repos live at ~/dev/<repo> — identical to the Mac, so paths line up both sides — but
+# backed by the durable volume via this symlink, keeping heavy trees off the small root.
+# Idempotent; never clobbers a real ~/dev directory (only manages the symlink).
+DEV_LINK="${HOME}/dev"
+DEV_TARGET="${ORB_BOX_DATA_MOUNT}/dev"
+if [ -L "$DEV_LINK" ]; then
+  [ "$(readlink "$DEV_LINK")" = "$DEV_TARGET" ] || { rm "$DEV_LINK"; ln -s "$DEV_TARGET" "$DEV_LINK"; }
+  ok "${DEV_LINK} -> ${DEV_TARGET}"
+elif [ -e "$DEV_LINK" ]; then
+  warn "${DEV_LINK} exists and is not a symlink — leaving it (repos won't be volume-backed via ${DEV_LINK})"
+else
+  ln -s "$DEV_TARGET" "$DEV_LINK"
+  ok "${DEV_LINK} -> ${DEV_TARGET}"
+fi
 
 ENV_SNIPPET="${ORB_BOX_DATA_MOUNT}/state/orb-env.sh"
 cat > "$ENV_SNIPPET" <<ENV
