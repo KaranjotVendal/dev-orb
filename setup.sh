@@ -70,7 +70,8 @@ main() {
   section "orb setup (user=${ORB_BOX_USER} mount=${ORB_BOX_DATA_MOUNT} region=${ORB_BOX_REGION})"
   if [ -n "$ONLY" ]; then
     local match=""
-    for rel in "${PHASES[@]}"; do [ "${rel##*/}" = "$ONLY" ] && match="$rel"; done
+    # Accept either the full phase path (as --list prints) or just its basename.
+    for rel in "${PHASES[@]}"; do { [ "$rel" = "$ONLY" ] || [ "${rel##*/}" = "$ONLY" ]; } && match="$rel"; done
     [ -n "$match" ] || die "unknown phase: ${ONLY} (see --list)"
     run_phase "$match"
   else
