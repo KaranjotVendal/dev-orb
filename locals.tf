@@ -33,7 +33,7 @@ locals {
   private_key_param_name = "${var.ssm_prefix}/snowflake/private-key-b64"
 
   # Where the durable EBS volume mounts and where the deployed repo lives.
-  data_mount   = "/mnt/sra-data"
+  data_mount   = "/mnt/data"
   run_user     = "sra"
   remote_repo  = "/mnt/sra-data/sold-rate-agent"
   cache_dir    = "/mnt/sra-data/cache"

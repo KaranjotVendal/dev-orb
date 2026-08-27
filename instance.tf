@@ -19,32 +19,11 @@ resource "aws_instance" "box" {
   # volume re-attaches afterwards, so the serving cache + session logs survive the
   # replacement.
   user_data_replace_on_change = true
-  user_data = templatefile("${path.module}/../user_data.sh.tftpl", {
-    region        = data.aws_region.current.region
+  user_data = templatefile("${path.module}/user_data.sh.tftpl", {
     timezone      = var.timezone
     data_mount    = local.data_mount
     ebs_volume_id = aws_ebs_volume.data.id
-    run_user      = local.run_user
-    remote_repo   = local.remote_repo
-    cache_dir     = local.cache_dir
-    session_logs  = local.session_logs
-    dashboard_url = var.dashboard_url
-
-    # SSM parameter names read at boot (seat bundles + DEBUG webhook + SSH key). The
-    # id-token param is NOT read at boot — it is pushed at 05:55, after boot, so the
-    # 06:00 wrapper fetches it fresh (see the wrapper contract / Finding 2).
-    token_param_name         = local.token_param_name
-    seat_param_names         = local.seat_param_names
-    debug_webhook_param_name = local.debug_webhook_param_name
-    ssh_key_param_name       = local.ssh_key_param_name
-    sf_identity_param_name   = local.sf_identity_param_name
-    private_key_param_name   = local.private_key_param_name
   })
-
-  # NB the 06:00 schedule units live in deploy/remote-vm/systemd/ and are installed +
-  # enabled by deploy.sh at the first code deploy, NOT by this bootstrap: the units
-  # and the code they run (vm_daily_run.sh) must arrive together, so a timer enabled
-  # at boot would only fire against absent code until that first deploy.
 
   root_block_device {
     encrypted = true

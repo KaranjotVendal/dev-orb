@@ -1,27 +1,22 @@
 #!/bin/bash
 set -euo pipefail
-exec > >(tee -a /var/log/sra-bootstrap.log) 2>&1
+exec > >(tee -a /var/log/orb-bootstrap.log) 2>&1
 
-# Runner-VM boot bootstrap (interim / shed-able). Ubuntu LTS. Prepares the box so the
-# laptop can deploy the repo and the 06:00 timer can run the codex investigation:
-#   1. base packages (incl. bubblewrap = the codex Linux sandbox) + aws CLI v2
-#   2. mount the durable EBS data volume first-boot-safe (UUID fstab, nofail, format-if-empty)
-#   3. the daily-run user + its SSH authorized key (reached ONLY via the SSM tunnel)
-#   4. SSM SecureString secrets -> per-seat auth files + a 0600 run.env
-#   5. the mise toolchain (node@22 + python@3.12 + uv) + codex-cli, under the run user
-# It does NOT read the id-token (pushed at 05:55, AFTER boot -> the 06:00 wrapper fetches
-# it fresh) and does NOT install the timer (deploy.sh installs it with the first code
-# deploy, so the units and the code they run arrive together).
+# orb box boot bootstrap (minimal). Ubuntu LTS. Prepares a BARE box so orb's setup.sh
+# — run afterwards as the default `ubuntu` user — can install the toolchain and the
+# agent workstation on top. Deliberately tiny, so box provisioning stays generic:
+#   1. base packages + aws CLI v2 (orb reads its secrets from SSM)
+#   2. mount the durable EBS data volume, first-boot-safe (UUID fstab, nofail, format-if-empty)
+# It creates NO extra user (orb runs as `ubuntu`), installs NO toolchain, and reads NO
+# secrets — all of that is orb's job, on purpose.
 #
-# user_data runs ONCE; a mid-way abort half-provisions the box permanently. So the two
-# first-boot flakies — the dpkg lock (cloud-init / unattended-upgrades) and SSM reads
-# racing IAM instance-profile propagation — are wrapped in bounded retries.
+# user_data runs ONCE; a mid-way abort half-provisions the box permanently. The one
+# first-boot flaky — the dpkg lock (cloud-init / unattended-upgrades) — is wrapped in a
+# bounded retry.
 
-echo "sra-bootstrap: starting at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo "orb-bootstrap: starting at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-RUN_USER="${run_user}"
 DATA_MOUNT="${data_mount}"
-REGION="${region}"
 
 # apt-get with a dpkg-lock wait + retry: cloud-init's own package steps and
 # apt-daily/unattended-upgrades routinely hold the lock for the first minutes of boot.
@@ -31,52 +26,30 @@ apt_get() {
     if DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 "$@"; then
       return 0
     fi
-    echo "sra-bootstrap: apt-get $* failed (attempt $${attempt}/5); retrying in 15s"
+    echo "orb-bootstrap: apt-get $* failed (attempt $${attempt}/5); retrying in 15s"
     sleep 15
   done
   return 1
 }
 
-# Fetch an SSM parameter value with a bounded retry, to ride out the seconds of IAM
-# instance-profile propagation on a fresh boot (a first-call AccessDenied is transient,
-# not fatal). Prints the value on stdout; returns nonzero only if every attempt failed
-# — the caller decides whether that is fatal (seats: yes; ssh key / webhook: no).
-ssm_fetch() {
-  local param_name="$1"
-  local with_decryption="$2" # "yes" | "no"
-  local attempt value
-  local decrypt=()
-  [ "$${with_decryption}" = "yes" ] && decrypt=(--with-decryption)
-  for attempt in $(seq 1 12); do
-    if value="$(aws ssm get-parameter --region "$${REGION}" "$${decrypt[@]}" \
-        --name "$${param_name}" --query Parameter.Value --output text 2>/dev/null)"; then
-      printf '%s' "$${value}"
-      return 0
-    fi
-    sleep 5
-  done
-  return 1
-}
+# ---------------------------------------------------------------------------
+# 0. Clock. Non-fatal if the tz value is bad — the box still works in UTC.
+# ---------------------------------------------------------------------------
+timedatectl set-timezone "${timezone}" || echo "orb-bootstrap: WARN could not set timezone ${timezone}; staying on the default clock"
 
 # ---------------------------------------------------------------------------
-# 0. Clock: match the laptop's wall-clock so the 06:00 timer lines up with the
-#    05:55 broker. Non-fatal if the tz value is bad — the run still works in UTC.
-# ---------------------------------------------------------------------------
-timedatectl set-timezone "${timezone}" || echo "sra-bootstrap: WARN could not set timezone ${timezone}; staying on the default clock"
-
-# ---------------------------------------------------------------------------
-# 1. Base packages. bubblewrap = the codex Linux sandbox (without it codex warns
-#    and falls back to a bundled copy — works but noisy). openssh-server backs the
-#    SSM-tunnelled rsync deploy; there is no SSH ingress in the security group.
+# 1. Base packages + aws CLI v2. openssh-server backs the SSM-tunnelled access;
+#    there is no SSH ingress in the security group. aws CLI is present so orb's
+#    preflight + secrets phases can read SSM immediately.
 # ---------------------------------------------------------------------------
 apt_get update -y
-apt_get install -y curl git ca-certificates xz-utils bubblewrap rsync unzip jq openssh-server
+apt_get install -y curl git ca-certificates xz-utils rsync unzip jq openssh-server
 systemctl enable --now ssh
 
 # aws CLI v2 (Ubuntu does not ship it). Arch-aware; the EC2 t3 target is x86_64.
 if ! command -v aws >/dev/null 2>&1; then
   AWS_ARCH="$(uname -m)"
-  echo "sra-bootstrap: installing aws CLI v2 for $${AWS_ARCH}"
+  echo "orb-bootstrap: installing aws CLI v2 for $${AWS_ARCH}"
   TMP_AWS="$(mktemp -d)"
   curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$${AWS_ARCH}.zip" -o "$${TMP_AWS}/awscliv2.zip"
   unzip -q "$${TMP_AWS}/awscliv2.zip" -d "$${TMP_AWS}"
@@ -94,7 +67,7 @@ VOLUME_ID="${ebs_volume_id}"
 VOLUME_SERIAL="vol$${VOLUME_ID#vol-}"
 BY_ID_LINK="/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_$${VOLUME_SERIAL}"
 
-echo "sra-bootstrap: waiting for data volume $${VOLUME_ID} ($${BY_ID_LINK})"
+echo "orb-bootstrap: waiting for data volume $${VOLUME_ID} ($${BY_ID_LINK})"
 for attempt in $(seq 1 30); do
   if [ -e "$${BY_ID_LINK}" ]; then
     break
@@ -102,19 +75,19 @@ for attempt in $(seq 1 30); do
   sleep 2
 done
 if [ ! -e "$${BY_ID_LINK}" ]; then
-  echo "sra-bootstrap: ERROR data volume device $${BY_ID_LINK} never appeared" >&2
+  echo "orb-bootstrap: ERROR data volume device $${BY_ID_LINK} never appeared" >&2
   exit 1
 fi
 
 DATA_DEVICE="$(readlink -f "$${BY_ID_LINK}")"
-echo "sra-bootstrap: data volume resolved to $${DATA_DEVICE}"
+echo "orb-bootstrap: data volume resolved to $${DATA_DEVICE}"
 
 # Format ONLY when the device has no filesystem — never reformat existing data.
 if ! blkid "$${DATA_DEVICE}" >/dev/null 2>&1; then
-  echo "sra-bootstrap: no filesystem on $${DATA_DEVICE} — creating ext4 (first boot)"
-  mkfs.ext4 -L sradata "$${DATA_DEVICE}"
+  echo "orb-bootstrap: no filesystem on $${DATA_DEVICE} — creating ext4 (first boot)"
+  mkfs.ext4 -L data "$${DATA_DEVICE}"
 else
-  echo "sra-bootstrap: existing filesystem on $${DATA_DEVICE} — preserving it"
+  echo "orb-bootstrap: existing filesystem on $${DATA_DEVICE} — preserving it"
 fi
 
 mkdir -p "$${DATA_MOUNT}"
@@ -125,132 +98,17 @@ DATA_UUID="$(blkid -s UUID -o value "$${DATA_DEVICE}")"
 FSTAB_LINE="UUID=$${DATA_UUID} $${DATA_MOUNT} ext4 defaults,nofail 0 2"
 if ! grep -qsF "UUID=$${DATA_UUID}" /etc/fstab; then
   echo "$${FSTAB_LINE}" >> /etc/fstab
-  echo "sra-bootstrap: added fstab entry for $${DATA_UUID}"
+  echo "orb-bootstrap: added fstab entry for $${DATA_UUID}"
 fi
 
 # Mount if not already mounted (mount -a honours the nofail fstab entry).
 if ! mountpoint -q "$${DATA_MOUNT}"; then
   mount -a
 fi
-echo "sra-bootstrap: $${DATA_MOUNT} mounted"
+echo "orb-bootstrap: $${DATA_MOUNT} mounted"
 
-# ---------------------------------------------------------------------------
-# 3. The daily-run user. Its home stays on the root volume; the durable dirs
-#    (repo + cache + logs) live on the EBS mount.
-# ---------------------------------------------------------------------------
-if ! id -u "$${RUN_USER}" >/dev/null 2>&1; then
-  useradd --create-home --shell /bin/bash "$${RUN_USER}"
-fi
+# Hand the volume root to the ubuntu user so orb's setup.sh (run as ubuntu) can
+# create its layout on it. orb's storage phase refines ownership within.
+chown ubuntu:ubuntu "$${DATA_MOUNT}"
 
-mkdir -p "${remote_repo}" "${cache_dir}" "${session_logs}"
-chown -R "$${RUN_USER}:$${RUN_USER}" "$${DATA_MOUNT}"
-
-# Authorized SSH key for the deploy tunnel (String SSM param; skip while unset). A
-# missing key is non-fatal here — the box still boots; deploy.sh just cannot land code
-# until the key is set out of band.
-SSH_KEY="$(ssm_fetch "${ssh_key_param_name}" no || true)"
-if [ -n "$${SSH_KEY}" ] && [ "$${SSH_KEY}" != "PLACEHOLDER" ]; then
-  install -d -m 700 -o "$${RUN_USER}" -g "$${RUN_USER}" "/home/$${RUN_USER}/.ssh"
-  printf '%s\n' "$${SSH_KEY}" > "/home/$${RUN_USER}/.ssh/authorized_keys"
-  chmod 600 "/home/$${RUN_USER}/.ssh/authorized_keys"
-  chown "$${RUN_USER}:$${RUN_USER}" "/home/$${RUN_USER}/.ssh/authorized_keys"
-  echo "sra-bootstrap: installed authorized_keys for $${RUN_USER}"
-else
-  echo "sra-bootstrap: WARN ssh authorized key is unset (PLACEHOLDER) — deploy.sh will fail until it is set"
-fi
-
-# ---------------------------------------------------------------------------
-# 4. SSM SecureString secrets -> per-seat auth files + the run.env.
-#    The id-token is NOT read here (pushed after boot); the wrapper fetches it at
-#    06:00. The three codex seat bundles + the DEBUG webhook ARE read here. Seats are
-#    REQUIRED, so a persistent read failure fails loudly (after the propagation retry)
-#    rather than silently leaving an empty auth file.
-# ---------------------------------------------------------------------------
-SEATS_DIR="/home/$${RUN_USER}/codex-seats"
-mkdir -p "$${SEATS_DIR}"
-BUNDLE_FILES=""
-%{ for name in seat_param_names ~}
-SEAT_FILE="$${SEATS_DIR}/${basename(name)}/auth.json"
-mkdir -p "$(dirname "$${SEAT_FILE}")"
-if ! SEAT_VALUE="$(ssm_fetch "${name}" yes)"; then
-  echo "sra-bootstrap: ERROR could not read seat param ${name} after retries (IAM not propagated, or param unset)" >&2
-  exit 1
-fi
-# ssm.tf seeds seat params with the literal "PLACEHOLDER"; a boot before the operator
-# sets the real bundle would otherwise write "PLACEHOLDER" into auth.json and poison the
-# run silently. Fail loud instead (same sentinel guard the ssh-key path uses above).
-if [ -z "$${SEAT_VALUE}" ] || [ "$${SEAT_VALUE}" = "PLACEHOLDER" ]; then
-  echo "sra-bootstrap: ERROR seat param ${name} is unset (PLACEHOLDER) — set the real seat bundle out of band before boot" >&2
-  exit 1
-fi
-printf '%s' "$${SEAT_VALUE}" > "$${SEAT_FILE}"
-chmod 600 "$${SEAT_FILE}"
-if [ -z "$${BUNDLE_FILES}" ]; then BUNDLE_FILES="$${SEAT_FILE}"; else BUNDLE_FILES="$${BUNDLE_FILES}:$${SEAT_FILE}"; fi
-%{ endfor ~}
-chown -R "$${RUN_USER}:$${RUN_USER}" "$${SEATS_DIR}"
-
-DEBUG_WEBHOOK="$(ssm_fetch "${debug_webhook_param_name}" yes || true)"
-
-# The run.env the 06:00 wrapper sources. 0600, owned by the run user. Holds only the
-# DEBUG webhook secret + non-secret run config; NOT the private key itself, which the
-# 06:00 wrapper fetches into SNOWFLAKE_PRIVATE_KEY_PATH at run time (same reason the
-# id-token was fetched at run time: run.env is written once, at boot).
-#
-# SF_AUTHENTICATOR is gone with the externalbrowser branch (key-pair Task 2) -- Snowflake
-# auth is SPCS OAuth or RSA key-pair, and the connector infers key-pair from the private
-# key's presence, so there is nothing left for it to select. What run.env carries instead
-# is the key's PARAM name and the PATH the wrapper writes it to; the Codex MCP child is
-# handed that path and never the value (INV-K7).
-#
-# FEEDBACK_TABLE is pinned to the DEV schema because the VM is STAGING (INV-2) and the
-# config default is PROD. Defence in depth rather than a live protection: the only writer
-# is the SPCS-served dashboard, and this box does not serve.
-SECRETS_DIR="$${DATA_MOUNT}/secrets"
-install -d -m 700 -o "$${RUN_USER}" -g "$${RUN_USER}" "$${SECRETS_DIR}"
-echo "sra-bootstrap: created $${SECRETS_DIR} (mode 700) for the Snowflake private key"
-
-ENV_FILE="$${DATA_MOUNT}/run.env"
-cat > "$${ENV_FILE}" <<SRA_ENV_EOF
-SR_BACKEND=codex
-USE_PLACEHOLDER_DATA=false
-FEEDBACK_TABLE=ML_AI_APPS.SOLD_RATE_AGENT_DEV.FEEDBACK
-SRA_CODEX_AUTH_BUNDLE_FILES=$${BUNDLE_FILES}
-SRA_CACHE_DIR=${cache_dir}
-SRA_DASHBOARD_URL=${dashboard_url}
-SLACK_WEBHOOK_URL=$${DEBUG_WEBHOOK}
-SRA_TOKEN_SSM_PARAM=${token_param_name}
-SRA_KEY_SSM_PARAM=${private_key_param_name}
-SNOWFLAKE_PRIVATE_KEY_PATH=${data_mount}/secrets/snowflake_key.p8.b64
-SRA_AWS_REGION=${region}
-SRA_TOKEN_TRANSPORT=ssm
-SRA_ENV_EOF
-chmod 600 "$${ENV_FILE}"
-chown "$${RUN_USER}:$${RUN_USER}" "$${ENV_FILE}"
-echo "sra-bootstrap: wrote $${ENV_FILE} (mode 600)"
-
-# The Snowflake connection identity (non-secret identifiers: SF_ACCOUNT/SF_USER/SF_ROLE/
-# SF_WAREHOUSE/SF_DATABASE/SF_SCHEMA), a dotenv block set out of band. Appended to run.env
-# so the run builds its Snowflake connection from these; the id-token supplies auth. String
-# param -> non-decrypt fetch. Non-fatal (like the ssh key / webhook) and PLACEHOLDER-guarded:
-# unset => the run skips (no identity), never poisons run.env with the literal "PLACEHOLDER".
-SF_IDENTITY="$(ssm_fetch "${sf_identity_param_name}" no || true)"
-if [ -n "$${SF_IDENTITY}" ] && [ "$${SF_IDENTITY}" != "PLACEHOLDER" ]; then
-  printf '%s\n' "$${SF_IDENTITY}" >> "$${ENV_FILE}"
-  echo "sra-bootstrap: appended Snowflake connection identity to $${ENV_FILE}"
-else
-  echo "sra-bootstrap: WARN Snowflake identity param is unset (PLACEHOLDER) — run.env carries no SF_* identity"
-fi
-
-# ---------------------------------------------------------------------------
-# 5. The mise toolchain + codex-cli, under the run user (B0-verified: matches the
-#    laptop, reproducible pinned versions). codex-cli is a per-user npm global under
-#    the mise node prefix — installed here so `codex` is on PATH inside `mise exec`
-#    (empty outside the mise env). The systemd service runs the wrapper via
-#    `mise exec` so uv/node/codex all resolve.
-# ---------------------------------------------------------------------------
-runuser -l "$${RUN_USER}" -c 'curl -fsSL https://mise.run | sh'
-runuser -l "$${RUN_USER}" -c '~/.local/bin/mise use -g node@22 python@3.12 uv@latest'
-runuser -l "$${RUN_USER}" -c '~/.local/bin/mise exec -- npm install -g @openai/codex'
-
-echo "sra-bootstrap: mise toolchain + codex-cli installed for $${RUN_USER}"
-echo "sra-bootstrap: complete at $(date -u +%Y-%m-%dT%H:%M:%SZ) — run 'deploy.sh' from the laptop to land the code and enable the 06:00 timer"
+echo "orb-bootstrap: complete at $(date -u +%Y-%m-%dT%H:%M:%SZ) — run orb setup.sh as ubuntu to build the workstation"
