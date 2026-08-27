@@ -1,34 +1,35 @@
 # orb box configuration (schema / example).
 #
-# orb is reusable tooling to stand up an agent-workstation VM. The REAL, ready-to-go
-# config for a given box lives privately (e.g. in your dotfiles/appa repo); this file
-# documents the schema with neutral placeholders and is the only config in the public repo.
-# bootstrap.sh reads the real config via lib/config.py (system python3 + stdlib tomllib).
+# orb is reusable tooling to stand up an agent-workstation VM. This file documents the
+# schema with neutral placeholders and is the only config shipped in the public repo; the
+# real, filled-in config for a given box lives privately (e.g. in a dotfiles/appa repo).
+# setup.sh reads it via lib/config.py (system python3 + stdlib tomllib).
 #
-# Secrets NEVER go here — they are pulled from SSM Parameter Store at runtime. This file
-# holds only non-secret, per-box values.
+# Secrets NEVER go here — they are read from SSM Parameter Store at runtime. This file holds
+# only non-secret, per-box values.
 
 [box]
-user       = "ubuntu"                  # single login/run user. Owns the volume + tools.
-data_mount = "/mnt/data"               # durable volume; all heavy trees live here.
-region     = "eu-west-1"               # AWS region for SSM reads.
-ssm_prefix = "/your-project/vm"        # SSM Parameter Store subtree holding this box's secrets.
+user       = "ubuntu"            # single login/run user; owns the volume + tools. REQUIRED.
+data_mount = "/mnt/data"         # durable volume mount; all heavy trees live here. REQUIRED.
+region     = "eu-west-1"         # AWS region for SSM reads. REQUIRED.
+ssm_prefix = "/your-project/vm"  # SSM Parameter Store subtree holding this box's secrets.
 timezone   = "Europe/London"
 
 [git]
-name  = "Your Name"                    # git identity for clone/commit on the box.
+name  = "Your Name"              # git identity for clone/commit on the box.
 email = "you@example.com"
 
 [agents]
-configure         = "both"             # "claude" | "pi" | "both" — passed to appa bootstrap --agent.
-replicate_dev_env = true               # run the dev-env bootstrap (skills/commands/settings/plugins).
+configure         = "both"       # "claude" | "pi" | "both" — passed to appa bootstrap --agent.
+replicate_dev_env = true         # run the dev-env bootstrap (skills/commands/settings/plugins).
 
 [tools]
-plannotator = true                     # install the plannotator CLI.
-extra_clis  = []                       # additional CLIs to install, e.g. ["jiracli", "jot-cli"].
+plannotator = true               # install the plannotator CLI.
+extra_clis  = []                 # additional CLIs to install, e.g. ["jiracli", "jot-cli"].
 
 # Repos to place on the box. `source` is "clone" (default) or "rsync" (explicit opt-in for
-# repos the box cannot clone — no credential, or local-only). `dest` is relative to data_mount.
+# repos the box cannot clone — no credential, or local-only; those are delivered Mac-side by
+# push-to-vm.sh). `dest` is relative to data_mount.
 
 [[repos]]
 name    = "your-agent-repo"
@@ -36,11 +37,11 @@ source  = "clone"
 url     = "https://github.com/YOUR_USER/YOUR_REPO"
 branch  = "main"
 dest    = "work/your-agent-repo"
-uv_sync = true                         # run `uv sync` after placing.
+uv_sync = true                   # run `uv sync` after placing.
 
 [[repos]]
 name            = "your-cli"
-source          = "rsync"              # rsynced from the Mac (e.g. private host with no box credential).
-rsync_path      = "~/dev/your-cli"     # Mac path push-to-vm.sh rsyncs from.
+source          = "rsync"        # rsynced from the Mac (private host, no box credential).
+rsync_path      = "~/dev/your-cli"
 dest            = "work/your-cli"
-uv_tool_install = true                 # install via `uv tool install --editable <dest>`.
+uv_tool_install = true           # install via `uv tool install --editable <dest>`.
