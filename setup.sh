@@ -24,6 +24,7 @@ PHASES=(
   packaging/mise
   packaging/agents
   config/secrets
+  config/repos
 )
 
 # --- args ---------------------------------------------------------------------------
