@@ -16,3 +16,8 @@ BRIEF.md
 SETUP-CHECKLIST.md
 # handoff continuity doc — local only
 HANDOFF.md
+# shakedown issues tracker — local only
+issues.md
+# python bytecode
+__pycache__/
+*.pyc
