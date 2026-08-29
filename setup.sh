@@ -25,6 +25,7 @@ PHASES=(
   packaging/agents
   config/secrets
   config/repos
+  config/agent-env
 )
 
 # --- args ---------------------------------------------------------------------------

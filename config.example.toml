@@ -20,8 +20,9 @@ name  = "Your Name"              # git identity for clone/commit on the box.
 email = "you@example.com"
 
 [agents]
-configure         = "both"       # "claude" | "pi" | "both" — passed to appa bootstrap --agent.
-replicate_dev_env = true         # run the dev-env bootstrap (skills/commands/settings/plugins).
+configure         = "both"                # "claude" | "pi" | "both" — which agents to configure.
+replicate_dev_env = true                  # replicate the agent config (skills/commands/settings) onto the box.
+repo              = "your-agent-repo"      # the [[repos]] name holding the agent config (skills/commands/extensions).
 
 [tools]
 plannotator = true               # install the plannotator CLI.
