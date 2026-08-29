@@ -55,3 +55,23 @@ for rc in "${HOME}/.bashrc" "${HOME}/.profile"; do
   ensure_line "$rc" "[ -f \"${ENV_SNIPPET}\" ] && . \"${ENV_SNIPPET}\""
 done
 ok "sourced ${ENV_SNIPPET} from .bashrc + .profile"
+
+# The rc files above cover login/interactive shells only. A bare `ssh box '<cmd>'` (non-login,
+# non-interactive — automation, push-to-vm) sources neither, so the toolchain would be missing;
+# worse, a shim on PATH without MISE_DATA_DIR makes mise reinstall onto the small root disk.
+# /etc/environment is the one place PAM applies to EVERY session type, so project the same env
+# there too. Static KEY=VALUE (no shell expansion), hence absolute values; overwrite each run
+# (idempotent). BASH_ENV was tried first but bash 5.2 ignores it for `bash -c` (how sshd runs
+# remote commands), so it cannot carry this.
+SYSTEM_PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+as_root tee /etc/environment >/dev/null <<ETCENV
+PATH="${ORB_BOX_DATA_MOUNT}/mise/shims:${ORB_BOX_DATA_MOUNT}/npm-global/bin:${HOME}/.local/bin:${SYSTEM_PATH}"
+MISE_DATA_DIR="${ORB_BOX_DATA_MOUNT}/mise"
+MISE_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/mise"
+XDG_CACHE_HOME="${ORB_BOX_DATA_MOUNT}/caches/xdg"
+NPM_CONFIG_PREFIX="${ORB_BOX_DATA_MOUNT}/npm-global"
+NPM_CONFIG_CACHE="${ORB_BOX_DATA_MOUNT}/caches/npm"
+UV_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/uv"
+PIP_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/pip"
+ETCENV
+ok "wrote /etc/environment (toolchain env for non-login shells)"
