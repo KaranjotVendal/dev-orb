@@ -5,7 +5,7 @@ variable "region" {
 }
 
 variable "allowed_account_ids" {
-  description = "Accounts Terraform is allowed to run against (the sanctioned mlops account). REQUIRED (no default) so plan/apply fails CLOSED when unset — an empty list would DISABLE the provider guard and target whatever account the ambient creds point at. `validate` does not need a value, so the offline gate stays green. Supply at GATE 2."
+  description = "Accounts Terraform is allowed to run against (the sanctioned account). REQUIRED (no default) so plan/apply fails CLOSED when unset — an empty list would DISABLE the provider guard and target whatever account the ambient creds point at. `validate` does not need a value, so the offline gate stays green. Supply at apply time."
   type        = list(string)
 
   validation {
@@ -17,14 +17,14 @@ variable "allowed_account_ids" {
 variable "name" {
   description = "Name prefix for the runner-VM resources."
   type        = string
-  default     = "sra-vm"
+  default     = "orb-vm"
 }
 
 variable "tags" {
   description = "Tags applied to all resources (via the provider default_tags)."
   type        = map(string)
   default = {
-    Project   = "sold-rate-agent"
+    Project   = "orb"
     Component = "remote-vm-runner"
     ManagedBy = "terraform"
     Interim   = "true"
@@ -36,7 +36,7 @@ variable "tags" {
 variable "ssm_prefix" {
   description = "SSM Parameter Store prefix for this box's secrets (e.g. the GitHub token orb reads at setup). The instance role's read grant is scoped under this subtree."
   type        = string
-  default     = "/sold-rate-agent/vm"
+  default     = "/your-project/vm"
 }
 
 # --- Network / instance ------------------------------------------------------

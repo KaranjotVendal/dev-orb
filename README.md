@@ -26,8 +26,8 @@ Everything is idempotent — re-running a phase converges rather than duplicates
 
 ## Prerequisites
 
-- AWS credentials for the target account (this repo pins `AWS_PROFILE=mlops`; adjust for yours).
-  aws/terraform commands need the profile exported per shell.
+- AWS credentials for the target account. aws/terraform commands need your AWS profile exported
+  per shell (`export AWS_PROFILE=<your-profile>`).
 - Terraform, for provisioning.
 - SSM parameters preloaded (SecureString), under your `[box].ssm_prefix`:
   - `<ssm_prefix>/github/token` — a GitHub token, so `config/secrets` can auth `gh` for private
@@ -36,7 +36,7 @@ Everything is idempotent — re-running a phase converges rather than duplicates
 ## 1. Provision the box
 
 ```
-export AWS_PROFILE=mlops
+export AWS_PROFILE=<your-profile>
 terraform init
 terraform apply
 ```

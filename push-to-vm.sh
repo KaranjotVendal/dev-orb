@@ -21,14 +21,14 @@ Mac-side delivery: rsyncs the orb repo, box config, the per-machine agent files
 (pi auth.json/settings.json, claude CLAUDE.md), and the config's rsync-source
 work repos (keeping .git) to the box. Does not run setup.sh and does not commit.
 
-  --host <ssh_host>   SSH host to deliver to (default: sra-fbl)
+  --host <ssh_host>   SSH host to deliver to (default: orb-vm)
   --config <path>     Path to the box config.toml (default: ~/.config/orb/config.toml)
   --dry-run           Pass --dry-run to rsync and skip remote mkdir/chmod side effects
   -h, --help          Show this help and exit
 EOF
 }
 
-ssh_host="sra-fbl"
+ssh_host="orb-vm"
 config_path="${HOME}/.config/orb/config.toml"
 dry_run=0
 

@@ -5,8 +5,8 @@
 # reachable from the internet. Shell + code-deploy tunnel are via SSM Session
 # Manager (which rides the instance's OUTBOUND connection to the SSM endpoints, not
 # any ingress rule), so no SSH ingress and no public listener exist. Egress is open
-# so the box can reach SSM, Snowflake, the codex/OpenAI API, Slack, and the mise /
-# apt / npm sources at boot.
+# so the box can reach SSM, the agent/model APIs, and the mise / apt / npm sources
+# at boot.
 
 # A single interim box doesn't justify a bespoke VPC — use the account's default.
 data "aws_vpc" "default" {
@@ -31,10 +31,9 @@ data "aws_subnet" "selected" {
   id = local.instance_subnet_id
 }
 
-# Ubuntu 24.04 LTS (Canonical). Chosen over jot-server's AL2023 because the
-# B0-validated bootstrap toolchain is apt-based (apt-get bubblewrap + mise.run +
-# per-user npm codex); Canonical LTS ships the SSM agent (snap) preinstalled, so
-# Session Manager works out of the box. See the GATE 2 note in the runbook.
+# Ubuntu 24.04 LTS (Canonical). The bootstrap toolchain is apt-based (bubblewrap +
+# mise.run + per-user npm); Canonical LTS ships the SSM agent (snap) preinstalled,
+# so Session Manager works out of the box.
 data "aws_ami" "ubuntu" {
   most_recent = true
   owners      = ["099720109477"] # Canonical
@@ -57,7 +56,7 @@ resource "aws_security_group" "instance" {
   vpc_id      = data.aws_vpc.default.id
 
   egress {
-    description = "All outbound - the box reaches SSM, Snowflake, the codex API, Slack, and boot package sources."
+    description = "All outbound - the box reaches SSM, the agent/model APIs, and boot package sources."
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
