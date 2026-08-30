@@ -16,6 +16,7 @@ DIRS=(
   "${ORB_BOX_DATA_MOUNT}/caches/npm" "${ORB_BOX_DATA_MOUNT}/caches/uv"
   "${ORB_BOX_DATA_MOUNT}/caches/pip" "${ORB_BOX_DATA_MOUNT}/caches/mise"
   "${ORB_BOX_DATA_MOUNT}/caches/xdg" "${ORB_BOX_DATA_MOUNT}/mise"
+  "${ORB_BOX_DATA_MOUNT}/uv/tools" "${ORB_BOX_DATA_MOUNT}/uv/bin"
 )
 for d in "${DIRS[@]}"; do mkdir -p "$d"; done
 install -d -m 700 "${ORB_BOX_DATA_MOUNT}/secrets"
@@ -44,10 +45,12 @@ export XDG_CACHE_HOME="${ORB_BOX_DATA_MOUNT}/caches/xdg"
 export NPM_CONFIG_PREFIX="${ORB_BOX_DATA_MOUNT}/npm-global"
 export NPM_CONFIG_CACHE="${ORB_BOX_DATA_MOUNT}/caches/npm"
 export UV_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/uv"
+export UV_TOOL_DIR="${ORB_BOX_DATA_MOUNT}/uv/tools"  # \`uv tool install\` CLIs on the volume, not the root
+export UV_TOOL_BIN_DIR="${ORB_BOX_DATA_MOUNT}/uv/bin" # ...same filesystem as UV_CACHE_DIR, so uv hardlinks (no cross-device copy warning)
 export PIP_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/pip"
 export MISE_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/mise"
 export MISE_DATA_DIR="${ORB_BOX_DATA_MOUNT}/mise"  # tool installs (node/python/toolkit) on the volume, not the 7G root
-export PATH="${ORB_BOX_DATA_MOUNT}/mise/shims:${ORB_BOX_DATA_MOUNT}/npm-global/bin:\$HOME/.local/bin:\$PATH"
+export PATH="${ORB_BOX_DATA_MOUNT}/mise/shims:${ORB_BOX_DATA_MOUNT}/npm-global/bin:${ORB_BOX_DATA_MOUNT}/uv/bin:\$HOME/.local/bin:\$PATH"
 ENV
 ok "wrote ${ENV_SNIPPET}"
 
@@ -65,13 +68,15 @@ ok "sourced ${ENV_SNIPPET} from .bashrc + .profile"
 # remote commands), so it cannot carry this.
 SYSTEM_PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
 as_root tee /etc/environment >/dev/null <<ETCENV
-PATH="${ORB_BOX_DATA_MOUNT}/mise/shims:${ORB_BOX_DATA_MOUNT}/npm-global/bin:${HOME}/.local/bin:${SYSTEM_PATH}"
+PATH="${ORB_BOX_DATA_MOUNT}/mise/shims:${ORB_BOX_DATA_MOUNT}/npm-global/bin:${ORB_BOX_DATA_MOUNT}/uv/bin:${HOME}/.local/bin:${SYSTEM_PATH}"
 MISE_DATA_DIR="${ORB_BOX_DATA_MOUNT}/mise"
 MISE_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/mise"
 XDG_CACHE_HOME="${ORB_BOX_DATA_MOUNT}/caches/xdg"
 NPM_CONFIG_PREFIX="${ORB_BOX_DATA_MOUNT}/npm-global"
 NPM_CONFIG_CACHE="${ORB_BOX_DATA_MOUNT}/caches/npm"
 UV_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/uv"
+UV_TOOL_DIR="${ORB_BOX_DATA_MOUNT}/uv/tools"
+UV_TOOL_BIN_DIR="${ORB_BOX_DATA_MOUNT}/uv/bin"
 PIP_CACHE_DIR="${ORB_BOX_DATA_MOUNT}/caches/pip"
 ETCENV
 ok "wrote /etc/environment (toolchain env for non-login shells)"
