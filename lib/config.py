@@ -74,7 +74,13 @@ def emit_repos(config: dict) -> None:
             flags.append("uv_sync")
         if repo.get("uv_tool_install"):
             flags.append("uv_tool_install")
-        print("\t".join([name, source, ref, repo.get("dest", ""), ",".join(flags)]))
+        # Optional rsync force-include patterns (pipe-joined 6th field): gitignored files to bundle
+        # anyway (e.g. ".env", "docs/", "docs/HANDOFF.md"). push-to-vm applies them before the
+        # .gitignore filter.
+        include = repo.get("include") or []
+        if not isinstance(include, list) or not all(isinstance(entry, str) for entry in include):
+            die(f"repo {label}: 'include' must be a list of strings")
+        print("\t".join([name, source, ref, repo.get("dest", ""), ",".join(flags), "|".join(include)]))
 
 
 def main(argv: list[str]) -> int:

@@ -30,7 +30,8 @@ extra_clis  = []                 # additional CLIs to install, e.g. ["jiracli", 
 
 # Repos to place on the box. `source` is "clone" (default) or "rsync" (explicit opt-in for
 # repos the box cannot clone — no credential, or local-only; those are delivered Mac-side by
-# push-to-vm.sh). `dest` is relative to data_mount.
+# push-to-vm.sh, which keeps .git so the box can spin worktrees, honors the repo's .gitignore, and
+# excludes .worktrees). `dest` is relative to data_mount.
 
 [[repos]]
 name    = "your-agent-repo"
@@ -46,3 +47,7 @@ source          = "rsync"        # rsynced from the Mac (private host, no box cr
 rsync_path      = "~/dev/your-cli"
 dest            = "dev/your-cli"
 uv_tool_install = true           # install via `uv tool install --editable <dest>`.
+# include: optional. Gitignored files to force-INTO the rsync anyway (push-to-vm applies these
+# before the .gitignore filter). Use for local files the repo needs to run that a clone would miss.
+# include = [".env", "docs/", "docs/HANDOFF.md"]   # ".../***" pulls a whole dir; a nested file
+                                                    # under a gitignored dir needs the dir too.
