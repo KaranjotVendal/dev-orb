@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # push-to-vm.sh — Mac-side delivery tool for orb. Rsyncs the orb repo, the box config, the
-# per-machine agent files (pi auth.json/settings.json, claude CLAUDE.md), and the config's
+# per-machine agent files (pi auth.json/settings.json, claude CLAUDE.md, codex auth.json), and the config's
 # rsync-source work repos (keeping .git so the box can spin worktrees) from this Mac to the box.
 # It does NOT run setup.sh and does NOT commit anything — delivery only.
 
@@ -18,8 +18,8 @@ usage() {
 Usage: push-to-vm.sh [--host <ssh_host>] [--config <path>] [--dry-run]
 
 Mac-side delivery: rsyncs the orb repo, box config, the per-machine agent files
-(pi auth.json/settings.json, claude CLAUDE.md), and the config's rsync-source
-work repos (keeping .git) to the box. Does not run setup.sh and does not commit.
+(pi auth.json/settings.json, claude CLAUDE.md, codex auth.json), and the config's
+rsync-source work repos (keeping .git) to the box. Does not run setup.sh, does not commit.
 
   --host <ssh_host>   SSH host to deliver to (default: orb-vm)
   --config <path>     Path to the box config.toml (default: ~/.config/orb/config.toml)
@@ -106,7 +106,24 @@ else
   warn "claude CLAUDE.md: not found at ${mac_claude_md} — skipping"
 fi
 
-# Group 5 — work repos. For each config [[repos]] entry with source="rsync", rsync it to the box
+# Group 5 — codex per-machine files: auth.json (codex-cli credentials — OpenAI API key + ChatGPT
+# OAuth tokens; tokens self-refresh). codex-cli self-manages its config.toml + skills, and its herdr
+# hook is installed by config/agent-env, so auth is the only thing delivered here.
+section "codex agent files"
+if [ "$dry_run" -eq 0 ]; then
+  ssh "${ssh_host}" 'mkdir -p .codex'
+fi
+mac_codex_auth="${HOME}/.codex/auth.json"
+if [ -f "$mac_codex_auth" ]; then
+  step "rsync ${mac_codex_auth} -> ${ssh_host}:.codex/auth.json"
+  rsync "${rsync_opts[@]}" "$mac_codex_auth" "${ssh_host}:.codex/auth.json"
+  [ "$dry_run" -eq 0 ] && ssh "${ssh_host}" 'chmod 600 .codex/auth.json'
+  ok "codex auth.json delivered"
+else
+  warn "codex auth.json: not found at ${mac_codex_auth} — skipping"
+fi
+
+# Group 6 — work repos. For each config [[repos]] entry with source="rsync", rsync it to the box
 # KEEPING .git (the box spins worktrees off it), honoring the repo's own .gitignore (junk stays
 # out), excluding .worktrees (the box makes its own), and force-including the repo's `include`
 # patterns (gitignored files to bundle anyway, e.g. .env). The slowest group, so it runs last.
