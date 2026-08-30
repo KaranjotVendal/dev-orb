@@ -61,6 +61,14 @@ Key fields: `[box]` (user, `data_mount`, region, `ssm_prefix`); `[[repos]]` (eac
 
 ## 3. Deliver orb + config to the box, then run setup
 
+One command from your workstation delivers, configures, and verifies the box:
+
+```
+./bootstrap.sh --host <box>       # push-to-vm -> setup.sh -> doctor.sh, then reminds about auth
+```
+
+Or run the steps yourself:
+
 ```
 ./push-to-vm.sh --host <box>                    # delivers orb repo, config, + per-machine agent files
 ssh <box> 'cd ~/orb && ./setup.sh --config ~/config.toml'
