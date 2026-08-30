@@ -64,6 +64,12 @@ fi
 step "running setup.sh on ${ssh_host}"
 ssh "$ssh_host" 'cd ~/orb && ./setup.sh --config ~/config.toml'
 
+# setup (config/storage) just wrote /etc/environment — the non-login toolchain env. Drop any reused
+# SSH master (ControlMaster), which was opened during delivery BEFORE that and captured the
+# pre-setup env; otherwise doctor, which relies on the session PATH, would see no toolchain and
+# report false failures. The next ssh reconnects fresh with the new env. No-op if no master.
+ssh -O exit "$ssh_host" 2>/dev/null || true
+
 # 3. Verify. doctor exits non-zero on any failed check — capture it and report, don't abort.
 step "running doctor.sh on ${ssh_host}"
 if ssh "$ssh_host" 'cd ~/orb && ./doctor.sh --config ~/config.toml'; then
