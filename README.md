@@ -120,6 +120,15 @@ box, agent-env warns and skips.
 
 ## 5. Validate
 
+One command checks every phase's outcome (volume, toolchain, secrets, repos, agent config) and
+exits non-zero if anything is broken — run it after setup, or later to catch drift:
+
+```
+ssh <box> 'cd ~/orb && ./doctor.sh --config ~/config.toml'
+```
+
+Or check individual pieces by hand:
+
 ```
 ssh <box> 'claude plugin list'          # plugins installed + enabled
 ssh <box> 'claude mcp list'             # MCP servers connected/authenticated
