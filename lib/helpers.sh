@@ -58,9 +58,16 @@ ssm_value_ok() { [ -n "$1" ] && [ "$1" != "PLACEHOLDER" ]; }
 load_config() {
   local config_path="$1"
   [ -f "$config_path" ] || die "config not found: ${config_path}"
+  # Capture first so config.py's exit code is honored — `eval "$(...)"` would discard it and let a
+  # rejected config (missing [box] key, bad repo) slip through to the :? backstop with a double
+  # message. The assignment's exit status IS config.py's, so `|| die` aborts cleanly on failure.
+  local rendered
+  rendered="$(python3 "${ORB_ROOT}/lib/config.py" "$config_path" env)" \
+    || die "invalid config: ${config_path} (see the error above)"
   set -a
-  eval "$(python3 "${ORB_ROOT}/lib/config.py" "$config_path" env)"
+  eval "$rendered"
   set +a
+  # Backstop (config.py already validates these; kept as defense in depth).
   : "${ORB_BOX_USER:?config missing [box].user}"
   : "${ORB_BOX_DATA_MOUNT:?config missing [box].data_mount}"
   : "${ORB_BOX_REGION:?config missing [box].region}"
