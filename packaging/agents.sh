@@ -1,16 +1,8 @@
 # shellcheck shell=bash
-# Agent CLIs that mise can't install: herdr (curl script), gh-stack (a gh extension),
-# plannotator (curl script). claude + pi (npm) come from mise via packages/mise-agents; gh
+# Agent CLIs that mise can't install: gh-stack (a gh extension), plannotator (curl script).
+# herdr-core (hc) is not installed here: the Mac copies it with `hc machine add <host> --install`. claude + pi (npm) come from mise via packages/mise-agents; gh
 # (aqua) from mise via packages/mise-tools. Runtime auth is wired by the secrets/login phases.
 section "agent stack (non-mise)"
-
-if have herdr; then
-  ok "herdr already installed"
-else
-  step "installing herdr"
-  curl -fsSL https://herdr.dev/install.sh | sh
-  ok "herdr installed"
-fi
 
 if have gh; then
   if gh extension list 2>/dev/null | grep -qi gh-stack; then

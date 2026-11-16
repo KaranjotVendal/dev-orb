@@ -146,14 +146,12 @@ plugins need a one-time OAuth:
   `app.us5.datadoghq.com` is `us5`, and so on — then complete the OAuth. `/ddtoolsets` picks
   which tool groups are enabled.
 
-### herdr integrations (pi / claude / codex)
+### herdr-core
 
-`config/agent-env` runs `herdr integration install <agent>` for every installed agent (pi, claude,
-codex) automatically — dropping each one's hook + settings so herdr sees agent session state. No
-manual step, and it's self-idempotent (re-runs don't duplicate). For claude it runs after the
-settings copy so the `SessionStart` hook lands in the freshly-installed settings. Each hook exits
-cleanly outside a herdr pane, so it's harmless when herdr isn't running; if `herdr` isn't on the
-box, agent-env warns and skips.
+The box runs herdr-core (`hc`), driven from the Mac. orb does not install it: once setup is done,
+run `hc machine add <host> --install` on the Mac, which copies hc to the box and starts its core.
+Claude Code reports its own working/idle/blocked status to herdr-core, so no hooks are needed.
+The old herdr TUI and its per-agent integrations are no longer installed.
 
 ## 5. Validate
 
@@ -171,7 +169,6 @@ ssh <box> 'claude plugin list'          # plugins installed + enabled
 ssh <box> 'claude mcp list'             # MCP servers connected/authenticated
 ssh <box> 'claude -p "list your skills"'
 ssh <box> 'pi -p "list your skills"'
-ssh <box> 'herdr integration status'    # pi/claude/codex should show "current"
 ```
 
 ## Operational notes
