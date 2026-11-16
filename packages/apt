@@ -10,3 +10,7 @@ rsync
 openssh-server
 gnupg
 wget
+# Docker engine, Compose and Buildx from Ubuntu's archive (native amd64 image builds on the t3).
+docker.io
+docker-compose-v2
+docker-buildx
