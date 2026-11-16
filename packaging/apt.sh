@@ -22,6 +22,15 @@ fi
 # openssh backs the SSM-tunnelled rsync deploy; enable it (non-fatal).
 as_root systemctl enable --now ssh 2>/dev/null || warn "could not enable ssh service"
 
+# Docker: run the daemon and let the config user use it without sudo (takes effect on next login).
+as_root systemctl enable --now docker 2>/dev/null || warn "could not enable docker service"
+if id -nG "${ORB_BOX_USER}" | tr ' ' '\n' | grep -qx docker; then
+  ok "${ORB_BOX_USER} already in the docker group"
+else
+  as_root usermod -aG docker "${ORB_BOX_USER}"
+  ok "${ORB_BOX_USER} added to the docker group (log in again to use docker without sudo)"
+fi
+
 # aws CLI v2 (Ubuntu does not ship it). Arch-aware; the EC2 t3 target is x86_64.
 if have aws; then
   ok "aws CLI already present ($(aws --version 2>&1 | head -1))"
