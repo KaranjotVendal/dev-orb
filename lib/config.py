@@ -10,6 +10,8 @@ from pathlib import Path
 #       Emit ORB_<SECTION>_<KEY>=value shell assignments for the scalar sections
 #       (box/git/agents/tools), for `eval "$(...)"`. Booleans render true/false, lists
 #       space-join, everything else str(). Fails closed if a required [box] key is absent.
+#       Optional keys pass through the same way, e.g. [box].ssh_host -> ORB_BOX_SSH_HOST
+#       (the Mac-side scripts' default SSH host).
 #
 #   python3 lib/config.py <file> repos
 #       Emit one tab-separated line per [[repos]] entry:
