@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # orb bootstrap.sh — one-command orchestrator (Mac-side). Delivers orb + config + agent files to the
-# box, runs setup.sh (the phases), then doctor.sh (verify), and prints a final status plus the
-# one-time interactive-auth reminder. Composes push-to-vm.sh -> setup.sh -> doctor.sh.
+# box, runs setup.sh (the phases), then doctor.sh (verify), adds the box to this Mac's herdr-core,
+# and prints a final status plus the one-time interactive-auth reminder.
+# Composes push-to-vm.sh -> setup.sh -> doctor.sh -> hc machine add.
 #
 # NOT in scope (kept separate, on purpose): `terraform apply` (provisioning) and the interactive
 # agent auth (claude /login, slack /mcp, datadog /ddsetup) — the latter can't be scripted.
@@ -22,16 +23,17 @@ usage() {
   cat <<'EOF'
 Usage: bootstrap.sh [--host <ssh_host>] [--config <path>] [--skip-push]
 
-One command: deliver orb + config + agent files to the box, run setup.sh, then doctor.sh.
+One command: deliver orb + config + agent files to the box, run setup.sh, then doctor.sh,
+then add the box to this Mac's herdr-core (hc machine add --install).
 
-  --host <ssh_host>   SSH host to bootstrap (default: orb-vm)
+  --host <ssh_host>   SSH host to bootstrap (default: [box].ssh_host in the config, else orb-vm)
   --config <path>     Path to the box config.toml (default: ~/.config/orb/config.toml)
   --skip-push         Skip the delivery step (orb + config already on the box)
   -h, --help          Show this help and exit
 EOF
 }
 
-ssh_host="orb-vm"
+ssh_host=""
 config_path="${HOME}/.config/orb/config.toml"
 skip_push=0
 
@@ -47,6 +49,14 @@ done
 
 have ssh || die "ssh not found on PATH"
 [ -f "$config_path" ] || die "config not found: ${config_path}"
+
+# Host precedence: --host, then [box].ssh_host from the config, then the default orb-vm.
+if [ -z "$ssh_host" ]; then
+  ssh_host="$(python3 "${ORB_ROOT}/lib/config.py" "${config_path}" env \
+    | grep '^ORB_BOX_SSH_HOST=' \
+    | sed -e 's/^ORB_BOX_SSH_HOST=//' -e "s/^'//" -e "s/'$//" || true)"
+fi
+[ -n "$ssh_host" ] || ssh_host="orb-vm"
 
 section "bootstrap ${ssh_host}"
 
@@ -78,7 +88,27 @@ else
   warn "doctor reported failures on ${ssh_host} — review the output above"
 fi
 
-# 4. Remind about the one-time interactive auth (cannot be scripted; see README).
+# 4. herdr-core. The Mac copies its own hc to the box and starts the box's core, so both stay on
+# the same version. First restart the box user's systemd manager: it started before setup added
+# the user to groups such as docker, and hc's core runs under it, so terminals would otherwise
+# miss those groups. On a fresh box nothing else runs under it yet. Skipped when the box is
+# already an hc machine (restarting would end its running terminals).
+if ! have hc; then
+  warn "hc not found on this Mac — skipping herdr-core; run: hc machine add ${ssh_host} --install"
+elif hc machine ls --json 2>/dev/null | python3 -c 'import json, sys; target = sys.argv[1]; machines = json.load(sys.stdin).get("machines", []); sys.exit(0 if any(machine.get("target") == target for machine in machines) else 1)' "$ssh_host"; then
+  ok "${ssh_host} is already an hc machine — leaving its core alone"
+else
+  step "restarting the box user's systemd manager so new group memberships apply"
+  ssh "$ssh_host" 'sudo systemctl restart "user@$(id -u).service"' || warn "could not restart the user manager on ${ssh_host}"
+  step "adding ${ssh_host} to herdr-core (hc machine add --install)"
+  if hc machine add "$ssh_host" --install; then
+    ok "herdr-core running on ${ssh_host}"
+  else
+    warn "hc machine add failed — retry by hand: hc machine add ${ssh_host} --install"
+  fi
+fi
+
+# 5. Remind about the one-time interactive auth (cannot be scripted; see README).
 section "next: one-time interactive agent auth (see README)"
 step "claude: ssh ${ssh_host}, run claude, then /login"
 step "slack plugin: in claude run /mcp -> slack (needs ssh -L 3118:localhost:3118)"

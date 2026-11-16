@@ -148,8 +148,9 @@ plugins need a one-time OAuth:
 
 ### herdr-core
 
-The box runs herdr-core (`hc`), driven from the Mac. orb does not install it: once setup is done,
-run `hc machine add <host> --install` on the Mac, which copies hc to the box and starts its core.
+The box runs herdr-core (`hc`), driven from the Mac. `bootstrap.sh` adds it as its last step with
+`hc machine add <host> --install` on the Mac, which copies the Mac's hc to the box and starts its
+core (skipped when the box is already an hc machine). Without bootstrap, run that command by hand.
 Claude Code reports its own working/idle/blocked status to herdr-core, so no hooks are needed.
 The old herdr TUI and its per-agent integrations are no longer installed.
 
