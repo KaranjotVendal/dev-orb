@@ -113,24 +113,4 @@ if [ "$configure" = "claude" ] || [ "$configure" = "both" ]; then
   fi
 fi
 
-# --- herdr integrations (per agent) ---
-# Report each installed agent's session state to herdr. Orthogonal to `configure` (herdr is not
-# skills/plugins), so install for every agent that is present. `herdr integration install` is
-# self-idempotent — a re-run does not duplicate its entry. Runs AFTER the claude settings copy
-# above, so claude's SessionStart hook lands in the freshly-installed settings rather than being
-# wiped by it. Each integration exits cleanly outside a herdr pane, so it is harmless when idle.
-if have herdr; then
-  for agent in pi claude codex; do
-    have "$agent" || continue
-    step "installing herdr ${agent} integration"
-    if herdr integration install "$agent" >/dev/null 2>&1; then
-      ok "herdr ${agent} integration installed"
-    else
-      warn "herdr integration install ${agent} failed — continuing"
-    fi
-  done
-else
-  warn "herdr not on PATH — skipping herdr integrations"
-fi
-
 ok "agent-env phase complete"

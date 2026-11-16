@@ -52,7 +52,7 @@ ck "/etc/environment PATH includes the mise shims" \
 
 # --- toolchain ---
 section "toolchain"
-for tool in node python uv gh claude pi codex herdr; do
+for tool in node python uv gh claude pi codex; do
   ck "${tool} on PATH" have "$tool"
 done
 
@@ -101,18 +101,6 @@ else
         bad "no claude plugins enabled"
       fi
     fi
-  fi
-
-  # herdr integrations for each installed agent (self-idempotent; installed by agent-env).
-  if have herdr; then
-    for agent in pi claude codex; do
-      have "$agent" || continue
-      if herdr integration status 2>/dev/null | grep -qE "^${agent}:.*current"; then
-        pass "herdr ${agent} integration current"
-      else
-        bad "herdr ${agent} integration not current"
-      fi
-    done
   fi
 fi
 
