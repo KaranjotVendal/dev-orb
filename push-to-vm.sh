@@ -21,14 +21,14 @@ Mac-side delivery: rsyncs the orb repo, box config, the per-machine agent files
 (pi auth.json/settings.json, claude CLAUDE.md, codex auth.json), and the config's
 rsync-source work repos (keeping .git) to the box. Does not run setup.sh, does not commit.
 
-  --host <ssh_host>   SSH host to deliver to (default: orb-vm)
+  --host <ssh_host>   SSH host to deliver to (default: [box].ssh_host from the config, else orb-vm)
   --config <path>     Path to the box config.toml (default: ~/.config/orb/config.toml)
   --dry-run           Pass --dry-run to rsync and skip remote mkdir/chmod side effects
   -h, --help          Show this help and exit
 EOF
 }
 
-ssh_host="orb-vm"
+ssh_host=""
 config_path="${HOME}/.config/orb/config.toml"
 dry_run=0
 
@@ -47,6 +47,14 @@ have rsync   || die "rsync not found on PATH"
 have ssh     || die "ssh not found on PATH"
 have python3 || die "python3 not found on PATH"   # reads the config's [[repos]] for group 5
 [ -f "$config_path" ] || die "config not found: ${config_path}"
+
+# Host precedence: --host, then the config's [box].ssh_host, then the neutral default.
+if [ -z "$ssh_host" ]; then
+  ssh_host="$(python3 "${ORB_ROOT}/lib/config.py" "${config_path}" env \
+    | grep '^ORB_BOX_SSH_HOST=' \
+    | sed -e 's/^ORB_BOX_SSH_HOST=//' -e "s/^'//" -e "s/'$//" || true)"
+fi
+[ -n "$ssh_host" ] || ssh_host="orb-vm"
 
 rsync_opts=(-a)
 [ "$dry_run" -eq 1 ] && rsync_opts+=(--dry-run)
@@ -141,7 +149,9 @@ repo_failures=0
 # process-substitution input and the loop stops after the first repo.
 # repo_flags consumes the flags TSV field (uv_sync etc.); delivery does not use it.
 # shellcheck disable=SC2034
-while IFS=$'\t' read -r repo_name repo_source repo_ref repo_dest repo_flags repo_include <&3; do
+# Fields are split on \037 (unit separator), not tab: tab is IFS whitespace, so `read` would
+# collapse an empty middle field (e.g. no flags) and shift `include` into the wrong variable.
+while IFS=$'\037' read -r repo_name repo_source repo_ref repo_dest repo_flags repo_include <&3; do
   [ -n "$repo_name" ] || continue
   [ "$repo_source" = "rsync" ] || continue
 
@@ -175,7 +185,7 @@ while IFS=$'\t' read -r repo_name repo_source repo_ref repo_dest repo_flags repo
     --filter=':- .gitignore' --exclude='.worktrees/' \
     "${mac_source}/" "${ssh_host}:${box_target}/"
   ok "${repo_name} delivered"
-done 3< <(python3 "${ORB_ROOT}/lib/config.py" "${config_path}" repos)
+done 3< <(python3 "${ORB_ROOT}/lib/config.py" "${config_path}" repos | tr '\t' '\037')
 
 [ "$repo_failures" -eq 0 ] || warn "${repo_failures} work repo(s) skipped — see above"
 

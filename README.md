@@ -80,6 +80,35 @@ ssh <box> 'cd ~/orb && ./setup.sh --config ~/config.toml'
 - `./setup.sh --list` — print the phases
 - `./setup.sh --config ~/config.toml --only config/agent-env` — run one phase
 
+The SSH host comes from `--host`, else `[box].ssh_host` in the config, else `orb-vm`.
+
+### Sync one repo or worktree: vm-sync
+
+`vm-sync.sh` sends the exact current state of a single repo or worktree (uncommitted changes
+included) to the box, so work can continue there. It is one-way (workstation to box), never
+deletes anything on the box (no `rsync --delete`), and never modifies local files. Symlink it
+onto your PATH, e.g. `ln -s "$PWD/vm-sync.sh" ~/.local/bin/vm-sync`.
+
+```
+vm-sync                                 # sync the repo containing the current directory
+vm-sync ~/dev/your-cli                  # or a given path
+vm-sync --dry-run                       # show what rsync would do; no remote changes
+vm-sync --host orb-vm --config <path>   # override the config's ssh_host / config location
+```
+
+- The repo's top level must be under `~/dev`; `~/dev/<rel>` lands at `<data_mount>/dev/<rel>`,
+  the same layout push-to-vm uses (so `~/dev/x-worktrees/y` lands at `dev/x-worktrees/y`).
+- Same filters as push-to-vm: the `include` patterns of the matching `[[repos]]` entry (matched by
+  `rsync_path`; a worktree matches its main repo's entry), then the repo's `.gitignore`, then
+  `.worktrees/` excluded. Repos not in the config sync with no extra includes.
+- **Main checkout**: the working tree is rsynced including `.git`.
+- **Worktree**: its `.git` file points at a local path the box does not have, so the box copy is
+  made a standalone repo: the working tree is rsynced without `.git`, the main repo's git dir is
+  rsynced to `<dest>/.git` (minus `worktrees/`, so all local branches and unpushed commits come
+  along), HEAD is set to the worktree's branch (or commit, if detached), and `git reset -q`
+  refreshes the index. Uncommitted changes show as changes on the box; staged-only new files
+  show as untracked there. The first sync of a large `.git` can be slow; repeats are incremental.
+
 ## 4. One-time interactive agent auth
 
 Some agent auth is interactive (OAuth / subscription) and is not scripted — do it once per box.

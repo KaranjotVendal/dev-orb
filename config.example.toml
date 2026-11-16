@@ -14,6 +14,8 @@ data_mount = "/mnt/data"         # durable volume mount; all heavy trees live he
 region     = "eu-west-1"         # AWS region for SSM reads. REQUIRED.
 ssm_prefix = "/your-project/vm"  # SSM Parameter Store subtree holding this box's secrets.
 timezone   = "Europe/London"
+ssh_host   = "orb-vm"            # optional: SSH host the Mac-side scripts (push-to-vm, vm-sync) use
+                                 # when --host is not given. Default "orb-vm".
 
 [git]
 name  = "Your Name"              # git identity for clone/commit on the box.
