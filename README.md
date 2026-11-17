@@ -109,6 +109,30 @@ vm-sync --host orb-vm --config <path>   # override the config's ssh_host / confi
   refreshes the index. Uncommitted changes show as changes on the box; staged-only new files
   show as untracked there. The first sync of a large `.git` can be slow; repeats are incremental.
 
+### Start and stop the box: vm-power
+
+`vm-power.sh` starts, stops and checks the box's EC2 instance from your workstation, so the box
+only runs (and costs) while you use it. Symlink it onto your PATH, e.g.
+`ln -s "$PWD/vm-power.sh" ~/.local/bin/vm-power`.
+
+```
+vm-power status                          # print the instance state (running, stopped, ...)
+vm-power start                           # start, wait for running, then wait until ssh answers
+vm-power stop                            # stop and wait until stopped
+vm-power stop --force                    # stop even with live terminals open on the box
+vm-power --host orb-vm --config <path> status   # override the config's ssh_host / config location
+```
+
+- The instance id comes from the SSH host: `ssh -G <host>` must resolve its HostName to the
+  instance id (`i-...`), as with an SSM-style host. Nothing about the instance is stored in orb.
+- AWS calls use `[box].region`, and `[box].aws_profile` if set (else `AWS_PROFILE` / the default
+  credentials).
+- `start` returns once ssh answers; the SSM agent can take a minute or two after boot.
+- `stop` first checks the herdr app (`hc ls`, if installed) for live terminals on the box and
+  refuses while any are open, listing them; `--force` stops anyway.
+- Stopping keeps the disk (EBS): repos, caches and agent config are all there on the next start.
+  The herdr app's machine for the box reconnects on its own once the box is back.
+
 ## 4. One-time interactive agent auth
 
 Some agent auth is interactive (OAuth / subscription) and is not scripted — do it once per box.
