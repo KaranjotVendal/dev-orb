@@ -16,6 +16,8 @@ ssm_prefix = "/your-project/vm"  # SSM Parameter Store subtree holding this box'
 timezone   = "Europe/London"
 ssh_host   = "orb-vm"            # optional: SSH host the Mac-side scripts (push-to-vm, vm-sync) use
                                  # when --host is not given. Default "orb-vm".
+# aws_profile = "your-profile"   # optional: AWS profile vm-power uses for start/stop/status.
+                                 # Unset: AWS_PROFILE / the default credentials.
 
 [git]
 name  = "Your Name"              # git identity for clone/commit on the box.
